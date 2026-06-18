@@ -588,12 +588,10 @@ impl StreamTx {
                     // since the above loop figuring out param needs to be correct also
                     // for the NextPacketKind::Blank case.
                     set_pt_for_padding = Some(pt_main);
-                } else {
-                    // If the PT we're sending on doesn't have a corresponding RTX PT,
-                    // the packet is de-facto not nackable.
-                    //
-                    // This blocks incoming NACK requests and thus ensures there are no
-                    // entries in self.retries without a RTX PT.
+                } else if !param.fb_nack() {
+                    // No RTX PT and no `fb_nack`: the packet cannot be resent (neither
+                    // via RTX nor in-band), so it is de-facto not nackable. This ensures
+                    // there are no entries in the rtx cache we can't resend.
                     next.pkt.nackable = false;
                 }
 
@@ -618,6 +616,13 @@ impl StreamTx {
                 header.ssrc = 0.into();
                 header.sequence_number = *next.seq_no as u16;
                 header
+            }
+            NextPacketKind::ResendInband => {
+                // In-band resend on the main SSRC: reuse the original PT and sequence
+                // number so SRTP reproduces the original ROC/IV and the encrypted
+                // payload decrypts at the receiver.
+                header_ref.ext_vals.rid_repair = None;
+                header_ref.clone()
             }
             NextPacketKind::Resend(_) | NextPacketKind::Blank(_) => {
                 // * For the Resend case, we will not have accepted/cached the packet unless
@@ -679,7 +684,7 @@ impl StreamTx {
         let pkt = &next.pkt;
 
         let body_len = match next.kind {
-            NextPacketKind::Regular | NextPacketKind::Resend(_) => {
+            NextPacketKind::Regular | NextPacketKind::Resend(_) | NextPacketKind::ResendInband => {
                 let body_len = pkt.payload.len();
                 if let Some(patch) = pkt.vp8_patch.as_ref() {
                     patch.copy_to(pkt.payload.as_ref(), &mut body_out[..body_len]);
@@ -840,6 +845,15 @@ impl StreamTx {
         self.stats.update_packet_counts(len, true);
         if let Some(h) = &mut self.stats.bytes_retransmitted {
             h.push(now, len);
+        }
+
+        if self.rtx.is_none() {
+            let seq_no = pkt.seq_no;
+            return Some(NextPacket {
+                kind: NextPacketKind::ResendInband,
+                seq_no,
+                pkt,
+            });
         }
 
         let seq_no = self.seq_no_rtx.inc();
@@ -1323,6 +1337,7 @@ struct NextPacket<'a> {
 enum NextPacketKind {
     Regular,
     Resend(SeqNo),
+    ResendInband,
     Blank(u8),
 }
 
