@@ -1,5 +1,7 @@
 # Unreleased
 
+  * Support NACK retransmission without RTX, resending in-band on the main SSRC
+  * Add `PayloadParams::set_resend` to configure or disable RTX
   * Let the application supply local ICE credentials on restarts: `SdpApi::ice_restart_with` and
     `SdpApi::set_restart_credentials` (for remote-initiated restarts in `accept_offer`)
 
