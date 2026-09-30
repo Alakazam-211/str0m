@@ -148,6 +148,10 @@ pub struct StreamTx {
     /// Determines retransmitted bytes ratio value to clear queued resends.
     rtx_ratio_cap: Option<f32>,
 
+    /// Optional per-packet limits on answering NACKs. `None` answers every NACK for a
+    /// cached packet (the default).
+    nack_policy: Option<NackPolicy>,
+
     /// Last time we produced a SR.
     last_sender_report: Instant,
 
@@ -185,6 +189,26 @@ pub struct StreamTx {
 ///
 /// The payload is the RTP payload only, without the RTP header.
 ///
+/// Per-packet limits on answering incoming NACKs, set with [`StreamTx::set_nack_policy`].
+///
+/// A NACKed packet is resent only if it has been resent fewer than `max_resends` times and
+/// more than `min(min_interval, rtt_factor × RTT)` has passed since its last resend (with
+/// `hold_after_send`, also since it was first sent). When the RTT is unknown, `min_interval`
+/// alone applies.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NackPolicy {
+    /// Upper bound of the hold-off between resends of one packet.
+    pub min_interval: Duration,
+    /// The hold-off is at most this many RTTs.
+    pub rtt_factor: u32,
+    /// Resends per packet.
+    pub max_resends: u8,
+    /// Hold NACKs that arrive within the hold-off of the packet's first send.
+    pub hold_after_send: bool,
+    /// Upper bound on resends waiting in the queue; more are dropped and counted.
+    pub max_queued_resends: usize,
+}
+
 /// Optional RTP fields default to the common unmarked non-nackable packet with
 /// no header extension values, no CSRC entries and no VP8 rewrite.
 #[derive(Debug)]
@@ -325,6 +349,7 @@ impl StreamTx {
             blank_packet: RtpPacket::blank(),
             rtx_cache: RtxCache::new(2000, DEFAULT_RTX_CACHE_DURATION),
             rtx_ratio_cap: DEFAULT_RTX_RATIO_CAP,
+            nack_policy: None,
             last_sender_report: already_happened(),
             pending_request_keyframe: None,
             pending_request_remb: None,
@@ -419,6 +444,24 @@ impl StreamTx {
             self.stats.bytes_retransmitted = None;
         }
         self.rtx_ratio_cap = rtx_ratio_cap;
+    }
+
+    /// Configure per-packet limits on answering incoming NACKs.
+    ///
+    /// Without a policy (the default) every NACK for a packet still in the RTX cache queues a
+    /// resend, so a receiver repeating a NACK gets the packet again each time, and the queue
+    /// of resends is only bounded by the `rtx_ratio_cap` (see [`StreamTx::set_rtx_cache`]).
+    ///
+    /// With a policy, a NACKed packet is resent at most [`NackPolicy::max_resends`] times, and
+    /// not again within `min(min_interval, rtt_factor × RTT)` of its last resend (or of its
+    /// first send, with [`NackPolicy::hold_after_send`]). At most
+    /// [`NackPolicy::max_queued_resends`] resends wait in the queue; the rest are dropped and
+    /// counted in [`MediaEgressStats::resends_dropped`][crate::stats::MediaEgressStats].
+    ///
+    /// Setting a policy also bounds resends without RTX (in-band on the main SSRC), which
+    /// otherwise would let a peer force unlimited repeats of the same packet.
+    pub fn set_nack_policy(&mut self, policy: Option<NackPolicy>) {
+        self.nack_policy = policy;
     }
 
     /// Set whether this stream is unpaced or not.
@@ -1022,17 +1065,45 @@ impl StreamTx {
         let seq_no = self.rtx_cache.last_cached_seq_no()?;
         let iter = entries.flat_map(|n| n.into_iter(seq_no));
 
+        let policy = self.nack_policy;
+        let hold = policy.map(|p| {
+            let by_rtt = self.stats.rtt().map(|rtt| rtt * p.rtt_factor);
+            match by_rtt {
+                Some(r) => r.min(p.min_interval),
+                None => p.min_interval,
+            }
+        });
+
         // Schedule all resends. They will be handled on next poll_packet
         for seq_no in iter {
-            let Some(packet) = self.rtx_cache.get_cached_packet_by_seq_no(seq_no) else {
+            let Some((state, payload_size)) = self.rtx_cache.nack_state_mut(seq_no) else {
                 // Packet was not available in RTX cache, it has probably expired.
                 continue;
             };
 
+            if let (Some(p), Some(hold)) = (policy, hold) {
+                if state.resends >= p.max_resends {
+                    continue;
+                }
+                let check_interval = state.resends > 0 || p.hold_after_send;
+                if check_interval && now.saturating_duration_since(state.last_at) <= hold {
+                    continue;
+                }
+                if self.resends.len() >= p.max_queued_resends {
+                    self.stats.increase_resends_dropped();
+                    continue;
+                }
+                state.resends += 1;
+                state.last_at = now;
+                if state.resends > 1 {
+                    self.stats.increase_nacks_repeated();
+                }
+            }
+
             let resend = Resend {
                 seq_no,
                 queued_at: now,
-                payload_size: packet.payload.len(),
+                payload_size,
             };
             self.resends.push_back(resend);
         }
@@ -1351,6 +1422,145 @@ struct Resend {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    fn nack_policy_stream(now: Instant) -> StreamTx {
+        let mut stream = StreamTx::new(
+            42.into(),
+            Some(44.into()),
+            MidRid(Mid::from("0"), None),
+            false,
+            1200,
+        );
+        for seq in 1..=10_u64 {
+            let pkt = RtpPacket {
+                header: RtpHeader::default(),
+                seq_no: seq.into(),
+                time: MediaTime::from_90khz(seq * 3000),
+                payload: vec![seq as u8; 100].into(),
+                vp8_patch: None,
+                timestamp: now,
+                last_sender_info: None,
+                nackable: true,
+            };
+            stream.rtx_cache.cache_sent_packet(pkt, now);
+        }
+        stream
+    }
+
+    fn nack(stream: &mut StreamTx, seqs: &[u16], now: Instant) -> usize {
+        let before = stream.resends.len();
+        let entries: Vec<NackEntry> = seqs.iter().map(|s| NackEntry { pid: *s, blp: 0 }).collect();
+        stream.handle_nack(entries.into_iter(), now);
+        let queued = stream.resends.len() - before;
+        stream.resends.clear();
+        queued
+    }
+
+    fn bounded_policy() -> NackPolicy {
+        NackPolicy {
+            min_interval: Duration::from_millis(100),
+            rtt_factor: 2,
+            max_resends: 3,
+            hold_after_send: true,
+            max_queued_resends: 1000,
+        }
+    }
+
+    #[test]
+    fn nack_without_policy_resends_every_time() {
+        let now = Instant::now();
+        let mut stream = nack_policy_stream(now);
+        for _ in 0..5 {
+            assert_eq!(nack(&mut stream, &[3, 4], now), 2);
+        }
+        assert_eq!(stream.stats.nack_policy_counts(), (0, 0));
+    }
+
+    #[test]
+    fn nack_policy_holds_repeats_and_caps_resends() {
+        let now = Instant::now();
+        let ms = |n: u64| now + Duration::from_millis(n);
+        let mut stream = nack_policy_stream(now);
+        stream.set_nack_policy(Some(bounded_policy()));
+
+        // Within 100 ms of the send: held (hold_after_send).
+        assert_eq!(nack(&mut stream, &[3, 4], ms(50)), 0);
+        // After the hold-off: answered.
+        assert_eq!(nack(&mut stream, &[3, 4], ms(110)), 2);
+        // A repeat right away: held.
+        assert_eq!(nack(&mut stream, &[3, 4], ms(150)), 0);
+        // Second and third resend.
+        assert_eq!(nack(&mut stream, &[3, 4], ms(220)), 2);
+        assert_eq!(nack(&mut stream, &[3, 4], ms(330)), 2);
+        // max_resends = 3: never again.
+        assert_eq!(nack(&mut stream, &[3, 4], ms(1000)), 0);
+        // Resends 2 and 3 of two packets are "repeated".
+        assert_eq!(stream.stats.nack_policy_counts(), (4, 0));
+        // Other packets are unaffected; unknown SNs are ignored.
+        assert_eq!(nack(&mut stream, &[5, 400], ms(1000)), 1);
+    }
+
+    #[test]
+    fn nack_policy_without_hold_after_send_answers_first_nack_at_once() {
+        let now = Instant::now();
+        let mut stream = nack_policy_stream(now);
+        stream.set_nack_policy(Some(NackPolicy {
+            hold_after_send: false,
+            ..bounded_policy()
+        }));
+        assert_eq!(nack(&mut stream, &[3], now), 1);
+        assert_eq!(nack(&mut stream, &[3], now + Duration::from_millis(50)), 0);
+    }
+
+    #[test]
+    fn nack_policy_interval_bounded_by_rtt() {
+        let now = Instant::now();
+        let ms = |n: u64| now + Duration::from_millis(n);
+        let mut stream = nack_policy_stream(now);
+        stream.set_nack_policy(Some(bounded_policy()));
+        // RTT 20 ms: hold-off is min(100, 2 × 20) = 40 ms.
+        stream
+            .stats
+            .set_rtt_for_test(Some(Duration::from_millis(20)));
+        assert_eq!(nack(&mut stream, &[3], ms(30)), 0);
+        assert_eq!(nack(&mut stream, &[3], ms(50)), 1);
+        assert_eq!(nack(&mut stream, &[3], ms(80)), 0);
+        assert_eq!(nack(&mut stream, &[3], ms(95)), 1);
+        // RTT 200 ms: the 100 ms minimum interval wins.
+        stream
+            .stats
+            .set_rtt_for_test(Some(Duration::from_millis(200)));
+        assert_eq!(nack(&mut stream, &[4], ms(150)), 1);
+        assert_eq!(nack(&mut stream, &[4], ms(240)), 0);
+        assert_eq!(nack(&mut stream, &[4], ms(260)), 1);
+    }
+
+    #[test]
+    fn nack_policy_bounds_the_resend_queue() {
+        let now = Instant::now();
+        let mut stream = nack_policy_stream(now);
+        stream.set_nack_policy(Some(NackPolicy {
+            max_queued_resends: 3,
+            ..bounded_policy()
+        }));
+        let t = now + Duration::from_millis(200);
+        let entries: Vec<NackEntry> = (1..=8).map(|s| NackEntry { pid: s, blp: 0 }).collect();
+        stream.handle_nack(entries.into_iter(), t);
+        assert_eq!(stream.resends.len(), 3);
+        assert_eq!(stream.stats.nack_policy_counts(), (0, 5));
+        // Dropped packets were not counted as resent: once the queue drains they are answered.
+        stream.resends.clear();
+        assert_eq!(nack(&mut stream, &[8], t), 1);
+    }
+
+    #[test]
+    fn reset_buffers_forgets_nack_state() {
+        let now = Instant::now();
+        let mut stream = nack_policy_stream(now);
+        stream.set_nack_policy(Some(bounded_policy()));
+        stream.reset_buffers();
+        assert_eq!(nack(&mut stream, &[3], now + Duration::from_millis(500)), 0);
+    }
 
     #[test]
     fn regular_padding_does_not_search_probe_negotiation() {

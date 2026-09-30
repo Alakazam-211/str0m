@@ -19,7 +19,7 @@ use crate::rtp_::{Rtcp, RtpHeader};
 use crate::util::already_happened;
 
 pub use self::receive::StreamRx;
-pub use self::send::{RtpWrite, StreamTx, StreamTxQueueInfo};
+pub use self::send::{NackPolicy, RtpWrite, StreamTx, StreamTxQueueInfo};
 
 mod receive;
 pub(crate) mod register;

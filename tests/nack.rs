@@ -676,3 +676,72 @@ pub fn nack_delay() -> Result<(), RtcError> {
 
     Ok(())
 }
+
+/// With a `NackPolicy`, in-band resends (no RTX) are bounded per packet, so a peer
+/// repeating NACKs cannot force unlimited repeats of the same packet.
+#[test]
+pub fn inband_resend_bounded_by_nack_policy() -> Result<(), RtcError> {
+    use std::collections::HashMap;
+    use str0m::rtp::NackPolicy;
+
+    init_log();
+    init_crypto_default();
+
+    let (mut l, mut r) = connect_l_r();
+
+    let mid = "vid".into();
+    let ssrc_tx: Ssrc = 42.into();
+
+    l.direct_api().declare_media(mid, MediaKind::Video);
+    l.direct_api().declare_stream_tx(ssrc_tx, None, mid, None);
+
+    r.direct_api().declare_media(mid, MediaKind::Video);
+    r.direct_api().expect_stream_rx(ssrc_tx, None, mid, None);
+
+    let max = l.last.max(r.last);
+    l.last = max;
+    r.last = max;
+
+    let params = l.params_vp8();
+    let ssrc = l.direct_api().stream_tx_by_mid(mid, None).unwrap().ssrc();
+    let pt = params.pt();
+
+    let max_resends = 1;
+    l.direct_api()
+        .stream_tx(&ssrc)
+        .unwrap()
+        .set_nack_policy(Some(NackPolicy {
+            min_interval: Duration::from_millis(100),
+            rtt_factor: 2,
+            max_resends,
+            hold_after_send: true,
+            max_queued_resends: 1000,
+        }));
+
+    let num_packets = 500;
+    send_with_loss(&mut l, &mut r, ssrc, pt, num_packets, 1000, |seq| {
+        (seq as u32).to_be_bytes()
+    })?;
+
+    let mut tx_by_seq: HashMap<u16, usize> = HashMap::new();
+    for (_, e) in &l.events {
+        if let Some(RawPacket::RtpTx(h, _)) = e.as_raw_packet() {
+            if h.ssrc == ssrc && h.payload_type == pt {
+                *tx_by_seq.entry(h.sequence_number).or_default() += 1;
+            }
+        }
+    }
+    let resent = tx_by_seq.values().filter(|n| **n > 1).count();
+    assert!(resent > 0, "expected at least one in-band resend");
+    for (seq, n) in &tx_by_seq {
+        assert!(
+            *n <= 1 + max_resends as usize,
+            "seq {} sent {} times, max_resends is {}",
+            seq,
+            n,
+            max_resends
+        );
+    }
+
+    Ok(())
+}
