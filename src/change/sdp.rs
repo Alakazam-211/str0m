@@ -30,6 +30,7 @@ use crate::streams::{DEFAULT_RTX_CACHE_DURATION, DEFAULT_RTX_RATIO_CAP, Streams}
 pub struct SdpApi<'a> {
     rtc: &'a mut Rtc,
     changes: Changes,
+    restart_creds: Option<IceCreds>,
 }
 
 impl<'a> SdpApi<'a> {
@@ -37,7 +38,21 @@ impl<'a> SdpApi<'a> {
         SdpApi {
             rtc,
             changes: Changes::default(),
+            restart_creds: None,
         }
+    }
+
+    /// Sets the local ICE credentials to answer a remote-initiated ICE restart with.
+    ///
+    /// When the offer given to [`SdpApi::accept_offer()`] restarts ICE (its credentials differ
+    /// from the current remote ones), these credentials are used for the answer instead of
+    /// freshly generated ones. They are ignored if the offer does not restart ICE.
+    ///
+    /// This lets an application that generates its own ICE credentials (for example from a
+    /// cryptographic RNG, or to keep them unique across many sessions) stay in control of them
+    /// across restarts.
+    pub fn set_restart_credentials(&mut self, creds: IceCreds) {
+        self.restart_creds = Some(creds);
     }
 
     /// Accept an [`SdpOffer`] from the remote peer. If this call returns successfully, the
@@ -81,7 +96,7 @@ impl<'a> SdpApi<'a> {
             ));
         }
 
-        add_ice_details(self.rtc, &offer, None)?;
+        add_ice_details(self.rtc, &offer, None, self.restart_creds.clone())?;
 
         if self.rtc.remote_fingerprint.is_none() {
             if let Some(f) = offer.fingerprint() {
@@ -175,7 +190,7 @@ impl<'a> SdpApi<'a> {
             ));
         }
 
-        add_ice_details(self.rtc, &answer, Some(&pending))?;
+        add_ice_details(self.rtc, &answer, Some(&pending), None)?;
 
         // Ensure setup=active/passive is corresponding remote and init dtls.
         init_dtls(self.rtc, &answer)?;
@@ -465,14 +480,24 @@ impl<'a> SdpApi<'a> {
     ///
     /// Returns the new ICE credentials that will be used going forward.
     pub fn ice_restart(&mut self, keep_local_candidates: bool) -> IceCreds {
+        self.ice_restart_with(IceCreds::new(), keep_local_candidates)
+    }
+
+    /// Perform an ICE restart with the given local ICE credentials.
+    ///
+    /// Like [`SdpApi::ice_restart()`], but the application supplies the new credentials instead
+    /// of having them generated. They must satisfy RFC 8445 §5.3 (unguessable, at least 24 bits
+    /// of randomness for the ufrag and 128 bits for the password).
+    ///
+    /// Returns the credentials that will be used going forward.
+    pub fn ice_restart_with(&mut self, creds: IceCreds, keep_local_candidates: bool) -> IceCreds {
         self.changes
             .retain(|c| !matches!(c, Change::IceRestart(_, _)));
 
-        let new_creds = IceCreds::new();
         self.changes
-            .push(Change::IceRestart(new_creds.clone(), keep_local_candidates));
+            .push(Change::IceRestart(creds.clone(), keep_local_candidates));
 
-        new_creds
+        creds
     }
 
     /// Attempt to apply the changes made.
@@ -717,6 +742,7 @@ fn add_ice_details(
     rtc: &mut Rtc,
     sdp: &Sdp,
     pending: Option<&SdpPendingOffer>,
+    restart_creds: Option<IceCreds>,
 ) -> Result<(), RtcError> {
     let Some(creds) = sdp.ice_creds() else {
         return Err(RtcError::RemoteSdp("missing a=ice-ufrag/pwd".into()));
@@ -743,8 +769,8 @@ fn add_ice_details(
                 ))?
         } else {
             // The remote OFFER had an ice restart, and we need to respond with
-            // new credentials in the ANSWER.
-            (IceCreds::new(), true)
+            // new credentials in the ANSWER: the ones the application set, if any.
+            (restart_creds.unwrap_or_else(IceCreds::new), true)
         };
 
         rtc.ice

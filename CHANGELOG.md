@@ -1,5 +1,8 @@
 # Unreleased
 
+  * Let the application supply local ICE credentials on restarts: `SdpApi::ice_restart_with` and
+    `SdpApi::set_restart_credentials` (for remote-initiated restarts in `accept_offer`)
+
 # 0.24.0
 
   * Keep `a=simulcast`/`a=rid` for send simulcast in SDP after the first offer.
