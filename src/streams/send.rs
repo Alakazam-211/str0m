@@ -615,6 +615,8 @@ impl StreamTx {
 
         let mut set_pt_for_padding = None;
         let mut set_cr = None;
+        // A regular packet whose PT has no RTX PT can only be resent in-band.
+        let mut in_band_only = false;
 
         let mut header = match next.kind {
             NextPacketKind::Regular => {
@@ -631,7 +633,9 @@ impl StreamTx {
                     // since the above loop figuring out param needs to be correct also
                     // for the NextPacketKind::Blank case.
                     set_pt_for_padding = Some(pt_main);
-                } else if !param.fb_nack() {
+                } else if param.fb_nack() {
+                    in_band_only = true;
+                } else {
                     // No RTX PT and no `fb_nack`: the packet cannot be resent (neither
                     // via RTX nor in-band), so it is de-facto not nackable. This ensures
                     // there are no entries in the rtx cache we can't resend.
@@ -804,7 +808,7 @@ impl StreamTx {
                 .pop(now)
                 .expect("head of send_queue to be there");
             if pkt.nackable {
-                self.rtx_cache.cache_sent_packet(pkt, now);
+                self.rtx_cache.cache_sent_packet(pkt, now, in_band_only);
             }
         }
 
@@ -881,6 +885,12 @@ impl StreamTx {
             break pkt.seq_no;
         };
 
+        // A packet whose PT has no RTX PT goes in-band even when the stream has an RTX SSRC.
+        let in_band = self
+            .rtx_cache
+            .nack_state_mut(seq_no)
+            .is_some_and(|(s, _)| s.in_band);
+
         // Borrow checker gymnastics.
         let pkt = self.rtx_cache.get_cached_packet_by_seq_no(seq_no).unwrap();
 
@@ -890,7 +900,7 @@ impl StreamTx {
             h.push(now, len);
         }
 
-        if self.rtx.is_none() {
+        if self.rtx.is_none() || in_band {
             let seq_no = pkt.seq_no;
             return Some(NextPacket {
                 kind: NextPacketKind::ResendInband,
@@ -1442,7 +1452,7 @@ mod test {
                 last_sender_info: None,
                 nackable: true,
             };
-            stream.rtx_cache.cache_sent_packet(pkt, now);
+            stream.rtx_cache.cache_sent_packet(pkt, now, false);
         }
         stream
     }
@@ -1464,6 +1474,40 @@ mod test {
             hold_after_send: true,
             max_queued_resends: 1000,
         }
+    }
+
+    #[test]
+    fn in_band_packet_on_rtx_stream_resends_in_band_and_is_never_padding() {
+        let now = Instant::now();
+        let mut stream = StreamTx::new(
+            42.into(),
+            Some(44.into()),
+            MidRid(Mid::from("0"), None),
+            false,
+            1200,
+        );
+        let pkt = RtpPacket {
+            header: RtpHeader::default(),
+            seq_no: 7.into(),
+            time: MediaTime::from_90khz(0),
+            payload: vec![7; 200].into(),
+            vp8_patch: None,
+            timestamp: now,
+            last_sender_info: None,
+            nackable: true,
+        };
+        stream.rtx_cache.cache_sent_packet(pkt, now, true);
+        assert!(
+            stream
+                .rtx_cache
+                .get_cached_packet_smaller_than(1000)
+                .is_none()
+        );
+        let entries = vec![NackEntry { pid: 7, blp: 0 }];
+        stream.handle_nack(entries.into_iter(), now);
+        let next = stream.poll_packet_resend(now).expect("a resend");
+        assert!(matches!(next.kind, NextPacketKind::ResendInband));
+        assert_eq!(*next.seq_no, 7);
     }
 
     #[test]

@@ -24,6 +24,8 @@ pub(crate) struct NackState {
     pub resends: u8,
     /// When the packet was last resent (or first sent), for the minimum resend interval.
     pub last_at: Instant,
+    /// The packet's PT has no RTX PT: it can only be resent in-band on the main SSRC.
+    pub in_band: bool,
 }
 
 #[derive(Debug)]
@@ -45,17 +47,22 @@ impl RtxCache {
         }
     }
 
-    pub fn cache_sent_packet(&mut self, packet: RtpPacket, now: Instant) {
+    /// Caches a sent packet. An `in_band` packet (its PT has no RTX PT) can only be resent
+    /// in-band, so it is never offered as a spurious (RTX) padding resend.
+    pub fn cache_sent_packet(&mut self, packet: RtpPacket, now: Instant, in_band: bool) {
         assert!(packet.nackable);
         let seq_no = packet.seq_no;
         let quantized_size = packet.payload.len() / RTX_CACHE_SIZE_QUANTIZER;
         let nack = NackState {
             resends: 0,
             last_at: now,
+            in_band,
         };
         self.packet_by_seq_no
             .push(*seq_no, now, CachedPacket { packet, nack });
-        self.seq_no_by_quantized_size[quantized_size] = seq_no;
+        if !in_band {
+            self.seq_no_by_quantized_size[quantized_size] = seq_no;
+        }
         self.remove_old_packets(now);
     }
 
@@ -131,7 +138,7 @@ mod test {
     fn rtx_cache_0_sized() {
         let now = Instant::now();
         let mut rtx_cache = RtxCache::new(0, Duration::from_secs(3));
-        rtx_cache.cache_sent_packet(packet(now, 1, 10), after(now, 10));
+        rtx_cache.cache_sent_packet(packet(now, 1, 10), after(now, 10), false);
         assert_eq!(
             Some(&mut packet(now, 1, 10)),
             rtx_cache.get_cached_packet_by_seq_no(1.into())
@@ -146,7 +153,7 @@ mod test {
     fn rtx_cache_0_duration() {
         let now = Instant::now();
         let mut rtx_cache = RtxCache::new(10, Duration::from_secs(0));
-        rtx_cache.cache_sent_packet(packet(now, 1, 10), after(now, 10));
+        rtx_cache.cache_sent_packet(packet(now, 1, 10), after(now, 10), false);
         assert_eq!(None, rtx_cache.get_cached_packet_by_seq_no(1.into()));
         assert_eq!(None, rtx_cache.get_cached_packet_smaller_than(1000));
     }
@@ -155,7 +162,7 @@ mod test {
     fn rtx_cache_1_sized() {
         let now = Instant::now();
         let mut rtx_cache = RtxCache::new(1, Duration::from_secs(3));
-        rtx_cache.cache_sent_packet(packet(now, 1, 10), after(now, 10));
+        rtx_cache.cache_sent_packet(packet(now, 1, 10), after(now, 10), false);
         assert_eq!(
             Some(&mut packet(now, 1, 10)),
             rtx_cache.get_cached_packet_by_seq_no(1.into())
@@ -169,7 +176,7 @@ mod test {
             rtx_cache.get_cached_packet_smaller_than(25)
         );
         assert_eq!(None, rtx_cache.get_cached_packet_smaller_than(24));
-        rtx_cache.cache_sent_packet(packet(now, 2, 20), after(now, 20));
+        rtx_cache.cache_sent_packet(packet(now, 2, 20), after(now, 20), false);
         assert_eq!(
             Some(&mut packet(now, 2, 20)),
             rtx_cache.get_cached_packet_by_seq_no(2.into())
@@ -185,7 +192,7 @@ mod test {
             let seq_no = 201 - i;
             let pkt = packet(now, seq_no, (201 - i) * 10);
             let now = after(now, i * 10);
-            rtx_cache.cache_sent_packet(pkt, now);
+            rtx_cache.cache_sent_packet(pkt, now, false);
         }
 
         assert_eq!(
@@ -205,7 +212,7 @@ mod test {
             let seq_no = i;
             let pkt = packet(now, seq_no, i * 10);
             let now = after(now, i * 10);
-            rtx_cache.cache_sent_packet(pkt, now);
+            rtx_cache.cache_sent_packet(pkt, now, false);
         }
 
         assert_eq!(None, rtx_cache.get_cached_packet_by_seq_no(99.into()));
