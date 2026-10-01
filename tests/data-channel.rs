@@ -406,6 +406,96 @@ pub fn data_channel_flood() -> Result<(), RtcError> {
     Ok(())
 }
 
+/// Messages in [`data_channel_flood_small_stack`].
+const SMALL_STACK_MESSAGES: usize = 10_000;
+
+/// The stack of the thread [`data_channel_flood_small_stack`] runs on. In a debug build the
+/// flood needs more than 2 MiB when every SCTP packet recurses into `poll_output`, and less
+/// than 256 KiB when it loops.
+const SMALL_STACK_BYTES: usize = 512 * 1024;
+
+/// Polling must not grow the stack with the number of SCTP packets an association has queued:
+/// each packet is fed to DTLS and polling continues in a loop, not in a recursive call per
+/// packet. A flood of small messages makes the sender's association emit many packets in one
+/// poll; the peers run on a thread with a small stack, which a call per packet overflows.
+#[test]
+pub fn data_channel_flood_small_stack() {
+    let flood = std::thread::Builder::new()
+        .name("small-stack".into())
+        .stack_size(SMALL_STACK_BYTES)
+        .spawn(flood_small_messages)
+        .expect("to spawn the flood thread");
+    let delivered = flood
+        .join()
+        .expect("the flood thread to finish")
+        .expect("the flood to run");
+    assert_eq!(delivered, SMALL_STACK_MESSAGES);
+}
+
+fn flood_small_messages() -> Result<usize, RtcError> {
+    init_log();
+    init_crypto_default();
+
+    let mut l = TestRtc::new(Peer::Left);
+    let mut r = TestRtc::new(Peer::Right);
+
+    l.add_host_candidate((Ipv4Addr::new(1, 1, 1, 1), 1000).into());
+    r.add_host_candidate((Ipv4Addr::new(2, 2, 2, 2), 2000).into());
+
+    let mut change = l.sdp_api();
+    let cid = change.add_channel("flood".into());
+    let (offer, pending) = change.apply().unwrap();
+
+    let answer = r.rtc.sdp_api().accept_offer(offer)?;
+    l.rtc.sdp_api().accept_answer(pending, answer)?;
+
+    loop {
+        if l.is_connected() || r.is_connected() {
+            break;
+        }
+        progress(&mut l, &mut r)?;
+    }
+
+    let max = l.last.max(r.last);
+    l.last = max;
+    r.last = max;
+
+    while l.channel(cid).is_none() {
+        progress(&mut l, &mut r)?;
+    }
+
+    let mut sent = 0;
+    let mut delivered = 0;
+    let mut seen = 0;
+    while delivered < SMALL_STACK_MESSAGES {
+        // Fill the send buffer: many small messages, so each poll after a write has a large
+        // number of SCTP packets to hand to DTLS.
+        if let Some(mut chan) = l.channel(cid) {
+            while sent < SMALL_STACK_MESSAGES {
+                if !chan.write(true, &[7u8; 100]).expect("to write") {
+                    break;
+                }
+                sent += 1;
+            }
+        }
+
+        progress(&mut l, &mut r)?;
+
+        delivered += r.events[seen..]
+            .iter()
+            .filter(|(_, e)| matches!(e, Event::ChannelData(_)))
+            .count();
+        seen = r.events.len();
+
+        assert!(
+            l.duration() < Duration::from_secs(60),
+            "the flood did not finish: sent {sent}, delivered {delivered}"
+        );
+    }
+
+    Ok(delivered)
+}
+
 #[test]
 pub fn channel_config_inband() -> Result<(), RtcError> {
     init_log();
