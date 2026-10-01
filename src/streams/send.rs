@@ -1361,6 +1361,13 @@ impl StreamTx {
         }
     }
 
+    /// Stops this stream from being used for padding until it sends a regular packet
+    /// again (which picks the padding PT anew).
+    pub(crate) fn stop_padding(&mut self) {
+        self.pt_for_padding = None;
+        self.padding = 0;
+    }
+
     pub(crate) fn reset_buffers(&mut self) {
         self.send_queue.clear();
         self.queue_info = None;
@@ -1508,6 +1515,26 @@ mod test {
         let next = stream.poll_packet_resend(now).expect("a resend");
         assert!(matches!(next.kind, NextPacketKind::ResendInband));
         assert_eq!(*next.seq_no, 7);
+    }
+
+    #[test]
+    fn stopped_stream_is_not_used_for_padding() {
+        let mut streams = crate::streams::Streams::new(false, 1200, Duration::from_millis(1500));
+        let mid = Mid::from("vid");
+        let stream = streams.declare_stream_tx(42.into(), Some(44.into()), MidRid(mid, None));
+        stream.pt_for_padding = Some(96.into());
+        let now = Instant::now();
+        assert!(
+            streams
+                .send_queue_states(now, |_, _| true)
+                .any(|q| q.use_for_padding)
+        );
+        streams.reset_buffers_tx(mid);
+        assert!(
+            !streams
+                .send_queue_states(now, |_, _| true)
+                .any(|q| q.use_for_padding)
+        );
     }
 
     #[test]

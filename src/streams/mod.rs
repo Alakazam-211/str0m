@@ -698,6 +698,8 @@ impl Streams {
     pub(crate) fn reset_buffers_tx(&mut self, mid: Mid) {
         for s in self.streams_tx_by_mid(mid) {
             s.reset_buffers();
+            // A stream that stopped sending must not be picked for padding either.
+            s.stop_padding();
         }
     }
 
