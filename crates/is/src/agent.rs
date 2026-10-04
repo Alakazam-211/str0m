@@ -18,6 +18,11 @@ use str0m_proto::{NonCryptographicRng, Pii, Protocol};
 use crate::candidate::{Candidate, CandidateKind};
 use crate::pair::{CandidatePair, CheckState, PairId};
 
+/// How long a USE-CANDIDATE request keeps a pair "still nominated" for a
+/// controlled ice-lite agent (`evaluate_nomination`). libwebrtc checks a lite
+/// peer's selected pair about every 2.5 s once stable.
+const LITE_NOMINATION_FRESH: Duration = Duration::from_secs(3);
+
 /// Handles the ICE protocol for a given peer.
 ///
 /// Each connection between two peers corresponds to one [`IceAgent`] on either end.
@@ -1224,7 +1229,7 @@ impl IceAgent {
 
         self.last_now = Some(now);
 
-        self.evaluate_nomination();
+        self.evaluate_nomination(now);
 
         // prune failed candidates.
         let mut any_pruned = false;
@@ -1241,7 +1246,7 @@ impl IceAgent {
             keep
         });
         if any_pruned {
-            self.evaluate_nomination();
+            self.evaluate_nomination(now);
             self.evaluate_state(now);
         }
 
@@ -1632,13 +1637,13 @@ impl IceAgent {
             pair.nominate(self.ice_lite);
         }
 
-        // A controlled ice-lite agent sends on the pair the controlling agent
-        // nominates *now*: after a NAT rebinding the controlling agent keeps
+        // A controlled ice-lite agent sends on a pair the controlling agent
+        // still nominates: after a NAT rebinding the controlling agent keeps
         // checking its selected pair (with USE-CANDIDATE, as libwebrtc does
         // towards a lite peer) from a new source, which forms a new pair with a
         // peer-reflexive remote of lower priority than the old one. Choosing
         // by priority alone kept egress on the dead address until the old pair
-        // was pruned (RECENT_BINDING_REQUEST, 15 s).
+        // was pruned (RECENT_BINDING_REQUEST, 15 s). See `evaluate_nomination`.
         let renominated = self.ice_lite && !self.controlling && req.use_candidate;
         if renominated {
             pair.record_use_candidate(req.now);
@@ -1646,9 +1651,9 @@ impl IceAgent {
 
         if self.controlling && pair.state() == CheckState::Succeeded {
             // See if we can nominate something now.
-            self.evaluate_nomination();
+            self.evaluate_nomination(req.now);
         } else if renominated {
-            self.evaluate_nomination();
+            self.evaluate_nomination(req.now);
         }
 
         let (_, password) = self.stun_credentials(true);
@@ -1927,14 +1932,14 @@ impl IceAgent {
         pair.record_binding_response(now, trans_id, valid_idx);
 
         if self.controlling {
-            self.evaluate_nomination();
+            self.evaluate_nomination(now);
         }
 
         // State might change when we get a response.
         self.evaluate_state(now);
     }
 
-    fn evaluate_nomination(&mut self) {
+    fn evaluate_nomination(&mut self, now: Instant) {
         let nominated_pair_priority = self.nominated_pair_priority();
 
         let best_prio = if self.controlling {
@@ -1945,13 +1950,25 @@ impl IceAgent {
                 .filter(|p| p.state() == CheckState::Succeeded)
                 .max_by_key(|p| p.prio())
         } else if self.ice_lite {
-            // A controlled ice-lite agent follows the pair most recently
-            // nominated with USE-CANDIDATE (the controlling agent's selected
-            // pair; see `stun_server_handle_request`), then priority.
+            // A controlled ice-lite agent picks the highest-priority pair among
+            // those the controlling agent still nominates (a USE-CANDIDATE
+            // request within LITE_NOMINATION_FRESH); a pair it stopped
+            // nominating loses to one it nominates now, whatever their
+            // priorities (a NAT rebinding: the old tuple goes quiet, the new
+            // peer-reflexive pair has a lower priority). With no fresh
+            // nomination, the highest-priority nominated pair as before.
+            let fresh = |p: &CandidatePair| {
+                p.last_use_candidate()
+                    .is_some_and(|t| now.saturating_duration_since(t) < LITE_NOMINATION_FRESH)
+            };
+            let any_fresh = self
+                .candidate_pairs
+                .iter()
+                .any(|p| p.is_nominated() && fresh(p));
             self.candidate_pairs
                 .iter_mut()
-                .filter(|p| p.is_nominated())
-                .max_by_key(|p| (p.last_use_candidate(), p.prio()))
+                .filter(|p| p.is_nominated() && (!any_fresh || fresh(&**p)))
+                .max_by_key(|p| p.prio())
         } else {
             // For controlled agents, we pick the best pair from what the controlling
             // agent has indicated with USE-CANDIDATE stun attribute.
@@ -2965,11 +2982,14 @@ mod test {
     }
 
     #[test]
-    fn ice_lite_controlled_follows_the_latest_use_candidate() {
+    fn ice_lite_controlled_follows_a_fresh_nomination() {
         // A NAT rebinding: the controlling agent keeps checking its selected
         // pair with USE-CANDIDATE, now from a new source port. The new pair has
         // a peer-reflexive remote of lower priority than the signaled host
-        // candidate; the controlled ice-lite agent must still send to it at once.
+        // candidate. While both are nominated recently the higher priority wins
+        // (aggressive nomination); once the old pair is no longer nominated
+        // (LITE_NOMINATION_FRESH) the controlled ice-lite agent sends on the new
+        // one, and a fresh nomination of the old tuple takes egress back.
         let mut agent = new_test_agent();
         agent.set_ice_lite(true);
         agent.set_controlling(false);
@@ -3008,7 +3028,8 @@ mod test {
         nominate(&mut agent, t0, ipv4_3(), host_prio);
         assert_eq!(sends_to(&agent), Some(ipv4_3()));
 
-        // The rebound source, with a peer-reflexive (lower) priority.
+        // The rebound source, with a peer-reflexive (lower) priority: the old
+        // pair was nominated 1 s ago, so the higher priority still wins.
         let rebound = SocketAddr::new(ipv4_3().ip(), ipv4_3().port() + 1);
         nominate(
             &mut agent,
@@ -3016,16 +3037,19 @@ mod test {
             rebound,
             host_prio - 1000,
         );
+        assert_eq!(sends_to(&agent), Some(ipv4_3()));
+
+        // The old tuple stopped nominating: egress moves on the next tick.
+        agent.handle_timeout(t0 + LITE_NOMINATION_FRESH + Duration::from_millis(100));
         assert_eq!(
             sends_to(&agent),
             Some(rebound),
-            "egress follows the most recent nomination"
+            "egress follows the pair still nominated"
         );
-        // A later tick keeps it (the old pair still has the higher priority).
-        agent.handle_timeout(t0 + Duration::from_millis(1500));
-        assert_eq!(sends_to(&agent), Some(rebound));
-        // And a new nomination on the old tuple moves it back.
-        nominate(&mut agent, t0 + Duration::from_secs(2), ipv4_3(), host_prio);
+
+        // A fresh nomination of the old tuple (higher priority) takes it back
+        // at once (also what undoes a replayed check from a spoofed source).
+        nominate(&mut agent, t0 + Duration::from_secs(4), ipv4_3(), host_prio);
         assert_eq!(sends_to(&agent), Some(ipv4_3()));
     }
 
