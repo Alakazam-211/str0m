@@ -1632,8 +1632,22 @@ impl IceAgent {
             pair.nominate(self.ice_lite);
         }
 
+        // A controlled ice-lite agent sends on the pair the controlling agent
+        // nominates *now*: after a NAT rebinding the controlling agent keeps
+        // checking its selected pair (with USE-CANDIDATE, as libwebrtc does
+        // towards a lite peer) from a new source, which forms a new pair with a
+        // peer-reflexive remote of lower priority than the old one. Choosing
+        // by priority alone kept egress on the dead address until the old pair
+        // was pruned (RECENT_BINDING_REQUEST, 15 s).
+        let renominated = self.ice_lite && !self.controlling && req.use_candidate;
+        if renominated {
+            pair.record_use_candidate(req.now);
+        }
+
         if self.controlling && pair.state() == CheckState::Succeeded {
             // See if we can nominate something now.
+            self.evaluate_nomination();
+        } else if renominated {
             self.evaluate_nomination();
         }
 
@@ -1930,6 +1944,14 @@ impl IceAgent {
                 .iter_mut()
                 .filter(|p| p.state() == CheckState::Succeeded)
                 .max_by_key(|p| p.prio())
+        } else if self.ice_lite {
+            // A controlled ice-lite agent follows the pair most recently
+            // nominated with USE-CANDIDATE (the controlling agent's selected
+            // pair; see `stun_server_handle_request`), then priority.
+            self.candidate_pairs
+                .iter_mut()
+                .filter(|p| p.is_nominated())
+                .max_by_key(|p| (p.last_use_candidate(), p.prio()))
         } else {
             // For controlled agents, we pick the best pair from what the controlling
             // agent has indicated with USE-CANDIDATE stun attribute.
@@ -1940,7 +1962,11 @@ impl IceAgent {
         };
 
         if let Some(best_prio) = best_prio {
-            if let Some(nominated) = nominated_pair_priority {
+            if self.ice_lite && !self.controlling {
+                if self.nominated_send == Some(best_prio.id()) {
+                    return;
+                }
+            } else if let Some(nominated) = nominated_pair_priority {
                 if nominated == best_prio.prio() {
                     // The best prio is also the current nominated prio. Make
                     // no changes since there can be multiple pairs having the
@@ -2936,6 +2962,71 @@ mod test {
                 .any(|e| matches!(e, IceAgentEvent::NominatedSend { .. })),
             "a single binding request must not choose the send address"
         );
+    }
+
+    #[test]
+    fn ice_lite_controlled_follows_the_latest_use_candidate() {
+        // A NAT rebinding: the controlling agent keeps checking its selected
+        // pair with USE-CANDIDATE, now from a new source port. The new pair has
+        // a peer-reflexive remote of lower priority than the signaled host
+        // candidate; the controlled ice-lite agent must still send to it at once.
+        let mut agent = new_test_agent();
+        agent.set_ice_lite(true);
+        agent.set_controlling(false);
+        agent
+            .add_local_candidate(Candidate::host(ipv4_1(), "udp").unwrap())
+            .unwrap();
+        let remote_creds = IceCreds::new();
+        agent.set_remote_credentials(remote_creds.clone());
+        let mut host = Candidate::host(ipv4_3(), "udp").unwrap();
+        host.set_ufrag(&remote_creds.ufrag);
+        let host_prio = host.prio();
+        agent.add_remote_candidate(host);
+
+        let nominate = |agent: &mut IceAgent, now: Instant, source: SocketAddr, prio: u32| {
+            let username = format!("{}:{}", agent.local_credentials.ufrag, remote_creds.ufrag);
+            let req = StunMessage::binding_request(&username, TransId::new(), true, 0, prio, true);
+            let bytes = serialize_stun_msg(req, &agent.local_credentials.pass);
+            assert!(agent.handle_packet(
+                now,
+                StunPacket {
+                    message: StunMessage::parse(&bytes).unwrap(),
+                    source,
+                    destination: ipv4_1(),
+                    proto: Protocol::Udp,
+                },
+            ));
+        };
+        let sends_to = |agent: &IceAgent| {
+            agent.events.iter().rev().find_map(|e| match e {
+                IceAgentEvent::NominatedSend { destination, .. } => Some(*destination),
+                _ => None,
+            })
+        };
+
+        let t0 = Instant::now();
+        nominate(&mut agent, t0, ipv4_3(), host_prio);
+        assert_eq!(sends_to(&agent), Some(ipv4_3()));
+
+        // The rebound source, with a peer-reflexive (lower) priority.
+        let rebound = SocketAddr::new(ipv4_3().ip(), ipv4_3().port() + 1);
+        nominate(
+            &mut agent,
+            t0 + Duration::from_secs(1),
+            rebound,
+            host_prio - 1000,
+        );
+        assert_eq!(
+            sends_to(&agent),
+            Some(rebound),
+            "egress follows the most recent nomination"
+        );
+        // A later tick keeps it (the old pair still has the higher priority).
+        agent.handle_timeout(t0 + Duration::from_millis(1500));
+        assert_eq!(sends_to(&agent), Some(rebound));
+        // And a new nomination on the old tuple moves it back.
+        nominate(&mut agent, t0 + Duration::from_secs(2), ipv4_3(), host_prio);
+        assert_eq!(sends_to(&agent), Some(ipv4_3()));
     }
 
     fn make_serialized_binding_request(

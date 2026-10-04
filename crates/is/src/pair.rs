@@ -53,6 +53,10 @@ pub struct CandidatePair {
     /// State of nomination for this candidate pair.
     nomination_state: NominationState,
 
+    /// The last remote binding request carrying USE-CANDIDATE (a controlled
+    /// agent's view of which pair the controlling agent nominates now).
+    last_use_candidate: Option<Instant>,
+
     /// Total number of STUN binding responses received on this pair,
     /// across the whole pair lifetime (not bounded by `binding_attempts`).
     responses_received: u64,
@@ -161,6 +165,7 @@ impl CandidatePair {
             remote_binding_requests: Default::default(),
             remote_binding_request_time: Default::default(),
             nomination_state: Default::default(),
+            last_use_candidate: None,
             responses_received: 0,
             total_round_trip_time: Duration::ZERO,
         }
@@ -225,6 +230,16 @@ impl CandidatePair {
         self.remote_binding_request_time
     }
 
+    /// Records a remote binding request with USE-CANDIDATE on this pair.
+    pub fn record_use_candidate(&mut self, now: Instant) {
+        self.last_use_candidate = Some(now);
+    }
+
+    /// The last remote binding request with USE-CANDIDATE on this pair.
+    pub fn last_use_candidate(&self) -> Option<Instant> {
+        self.last_use_candidate
+    }
+
     pub fn is_ice_lite_alive(&self, now: Instant) -> bool {
         let Some(t) = self.remote_binding_request_time else {
             return true; // No timestamp yet = hasn't had a chance to fail
@@ -248,6 +263,7 @@ impl CandidatePair {
     }
 
     pub fn copy_nominated_and_success_state(&mut self, other: &CandidatePair) {
+        self.last_use_candidate = self.last_use_candidate.max(other.last_use_candidate);
         match other.nomination_state {
             NominationState::Nominated | NominationState::Success => {
                 self.nomination_state = other.nomination_state;
