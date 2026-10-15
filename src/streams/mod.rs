@@ -350,6 +350,15 @@ impl Streams {
         self.streams_tx.remove(&ssrc).is_some()
     }
 
+    /// Re-keys a send stream whose SSRC changed from `old` (`reset_stream_tx`): `streams_tx`
+    /// is keyed by SSRC, and incoming RTCP (receiver reports, NACK, PLI, FIR) finds its send
+    /// stream by the SSRC it names.
+    pub(crate) fn rekey_stream_tx(&mut self, old: Ssrc) {
+        if let Some(s) = self.streams_tx.remove(&old) {
+            self.streams_tx.insert(s.ssrc(), s);
+        }
+    }
+
     pub(crate) fn local_sender_ssrcs(&self) -> Vec<Ssrc> {
         self.streams_tx
             .values()

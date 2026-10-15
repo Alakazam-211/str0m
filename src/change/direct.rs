@@ -369,6 +369,11 @@ impl<'a> DirectApi<'a> {
     /// - No stream was found for the given mid/rid
     /// - The new SSRC is the same as the current one (no change needed)
     /// - The new RTX SSRC is the same as the current one (no change needed)
+    /// - The new SSRC is another send stream's
+    ///
+    /// The stream is found by its new SSRC afterwards ([`DirectApi::stream_tx`], and incoming
+    /// RTCP: receiver reports, NACKs, PLIs and FIRs naming the new SSRC reach it); the old SSRC
+    /// no longer names it.
     pub fn reset_stream_tx(
         &mut self,
         mid: Mid,
@@ -377,6 +382,17 @@ impl<'a> DirectApi<'a> {
         new_rtx: Option<Ssrc>,
     ) -> Option<&mut StreamTx> {
         let midrid = MidRid(mid, rid);
+
+        // Another send stream already has the new SSRC: re-keying would replace it.
+        let taken = self
+            .rtc
+            .session
+            .streams
+            .stream_tx(&new_ssrc)
+            .is_some_and(|s| !s.is_midrid(midrid));
+        if taken {
+            return None;
+        }
 
         // Find the stream by mid/rid
         let stream = self.rtc.session.streams.stream_tx_by_midrid(midrid)?;
@@ -392,11 +408,15 @@ impl<'a> DirectApi<'a> {
             return None;
         }
 
-        // Reset the stream with the new SSRC and RTX
+        // Reset the stream with the new SSRC and RTX, and keep it in the send-stream table
+        // under the new SSRC (it is keyed by SSRC; incoming RTCP looks streams up by it).
+        let old = stream.ssrc();
         stream.reset_ssrc(new_ssrc, new_rtx);
+        let streams = &mut self.rtc.session.streams;
+        streams.rekey_stream_tx(old);
 
         // Return a reference to the updated stream
-        Some(stream)
+        streams.stream_tx(&new_ssrc)
     }
 
     /// Send an application-specific feedback message (PSFB FMT=15, PT=206).
