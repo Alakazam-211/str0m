@@ -512,6 +512,13 @@ pub fn rtp_direct_reset_ssrc_rtcp_reaches_new_ssrc() -> Result<(), RtcError> {
     );
     assert_eq!(stats.plis, 1, "{stats:?}");
     assert!(stats.nacks > 0, "{stats:?}");
+    // The resends are counted on their own, inside the totals.
+    assert!(stats.packets_resent > 0, "{stats:?}");
+    assert!(stats.packets_resent < stats.packets, "{stats:?}");
+    assert!(
+        stats.bytes_resent > 0 && stats.bytes_resent < stats.bytes,
+        "{stats:?}"
+    );
 
     Ok(())
 }

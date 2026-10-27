@@ -156,6 +156,8 @@ impl StreamTxStats {
                 rid: midrid.rid(),
                 bytes: self.bytes,
                 packets: self.packets,
+                bytes_resent: self.bytes_resent,
+                packets_resent: self.packets_resent,
                 firs: self.firs,
                 plis: self.plis,
                 nacks: self.nacks,

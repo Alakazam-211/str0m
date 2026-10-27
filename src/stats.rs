@@ -150,6 +150,19 @@ pub struct MediaEgressStats {
     ///
     /// [1]: https://www.w3.org/TR/webrtc-stats/#dom-rtcsentrtpstreamstats-packetssent
     pub packets: u64,
+    /// Bytes of retransmissions alone (also counted in [`bytes`][Self::bytes]): the payload of
+    /// every resend, on the RTX SSRC or in-band.
+    ///
+    /// Spec equivalent to [`RTCOutboundRtpStreamStats.retransmittedBytesSent`][1].
+    ///
+    /// [1]: https://www.w3.org/TR/webrtc-stats/#dom-rtcoutboundrtpstreamstats-retransmittedbytessent
+    pub bytes_resent: u64,
+    /// Number of retransmitted rtp packets alone (also counted in [`packets`][Self::packets]).
+    ///
+    /// Spec equivalent to [`RTCOutboundRtpStreamStats.retransmittedPacketsSent`][1].
+    ///
+    /// [1]: https://www.w3.org/TR/webrtc-stats/#dom-rtcoutboundrtpstreamstats-retransmittedpacketssent
+    pub packets_resent: u64,
     /// Number of firs received.
     pub firs: u64,
     /// Number of plis received.
