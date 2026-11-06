@@ -13,11 +13,25 @@ See more details in below section.
 
 ## Fork patches (Alakazam Labs)
 
-This fork of str0m carries patches changed by Alakazam Labs on top of upstream; str0m's licence
-and credits are unchanged.
+This fork of str0m carries patches by Alakazam Labs on top of upstream (merge base `95e5038c`);
+str0m's licence and credits are unchanged. Each line names the fork commit.
 
+- `0926761e` Let the application supply ICE credentials on restart (test: `6b8aeaab`).
+- `b9efb669` `StreamTx::set_nack_policy`: per-packet NACK limits.
+- `6aa71dce` Resend in-band when the packet's payload type has no RTX payload type.
+- `de51e8f9` Do not pad on a stream whose media stopped sending.
+- `73fce91c` Loop instead of recursing in `Rtc::do_poll_output`.
+- `f55548ca` ice-lite: a controlled agent sends on the most recently nominated pair.
+- `d1a7722f` ice-lite: renomination follows a fresh nomination, not the latest one.
+- `a6378f7e` `reset_stream_tx` keeps the send stream under its new SSRC.
+- `f80c8fa0` `MediaEgressStats` carries `packets_resent` and `bytes_resent`.
 - Capped initial probes no longer lower the estimate below the start estimate (upstream PR: to
   be added).
+- A delay-based decrease needs the link, not the sender, to limit the acknowledged packets.
+
+It also carries one upstream contributor's commit ahead of its release: `7a925e9c`, NACK
+retransmission without RTX via in-band resend on the main SSRC, by Jury Jaraševič
+([str0m#980](https://github.com/algesten/str0m/pull/980)).
 
 ## Join us
 
