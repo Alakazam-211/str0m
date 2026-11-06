@@ -11,6 +11,14 @@ calls of the public API.
 This is deliberately not a standard `RTCPeerConnection` API since that isn't a great fit for Rust.
 See more details in below section.
 
+## Fork patches (Alakazam Labs)
+
+This fork of str0m carries patches changed by Alakazam Labs on top of upstream; str0m's licence
+and credits are unchanged.
+
+- Capped initial probes no longer lower the estimate below the start estimate (upstream PR: to
+  be added).
+
 ## Join us
 
 We are discussing str0m things on Discord. Join us using this [invitation link][discord].
