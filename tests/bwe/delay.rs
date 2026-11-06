@@ -6,7 +6,9 @@ use netem::{DataSize, NetemConfig};
 use str0m::RtcError;
 use str0m::bwe::Bitrate;
 
-use crate::common::{BweTestContext, Step, connect_with_bwe, init_crypto_default, init_log};
+use crate::common::{
+    BweTestContext, Step, connect_with_bwe, get_last_bwe_estimate, init_crypto_default, init_log,
+};
 
 #[test]
 fn overuse_triggers_aimd_decrease() -> Result<(), RtcError> {
@@ -98,6 +100,43 @@ fn underuse_allows_estimate_growth() -> Result<(), RtcError> {
     let (mut l, mut r) = connect_with_bwe(Bitrate::mbps(1), Bitrate::mbps(10));
     let mut ctx = BweTestContext::new(&mut l, &mut r);
     ctx.run_plan(&mut l, &mut r, &plan)?;
+
+    Ok(())
+}
+
+#[test]
+fn application_limited_sender_keeps_its_estimate_after_a_probe_queue() -> Result<(), RtcError> {
+    init_log();
+    init_crypto_default();
+
+    // A 2 Mbps link and a sender far below it (an application whose media has not ramped up
+    // yet). The initial probes queue on the link and the delay trend reads overuse; a decrease
+    // based on the acknowledged bitrate, the sender's own 80 kbps, would throw the estimate
+    // to a fraction of that. The estimate must stay near what the link carries.
+    let (mut l, mut r) = connect_with_bwe(Bitrate::kbps(1_500), Bitrate::mbps(3));
+    let mut ctx = BweTestContext::new(&mut l, &mut r);
+    let link = NetemConfig::new()
+        .latency(Duration::from_millis(20))
+        .jitter(Duration::from_millis(2))
+        .link(Bitrate::mbps(2), DataSize::kbytes(150))
+        .seed(42);
+    l.set_netem(link);
+    r.set_netem(link);
+    ctx.set_media_send_rate(Bitrate::kbps(80));
+
+    let mut lowest: Option<Bitrate> = None;
+    for _ in 0..250 {
+        ctx.run_for_duration(&mut l, &mut r, Duration::from_millis(20))?;
+        if let Some(e) = get_last_bwe_estimate(&l) {
+            lowest = Some(lowest.map_or(e, |x| x.min(e)));
+        }
+    }
+
+    let lowest = lowest.expect("an estimate");
+    assert!(
+        lowest >= Bitrate::kbps(1_200),
+        "the estimate fell to {lowest} on a 2 Mbps link"
+    );
 
     Ok(())
 }

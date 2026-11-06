@@ -23,6 +23,8 @@ const MAX_ESTIMATE_RATIO: f64 = 1.5;
 const DEFAULT_BACKOFF_TIME: Duration = Duration::from_millis(100);
 /// Number of standard deviations below mean to reset observed bitrate average.
 const OBSERVED_BITRATE_RESET_THRESHOLD_STD: f64 = 3.0;
+/// Added to the RTT-based reduction interval before a repeat decrease in one overuse episode.
+const REPEAT_DECREASE_MARGIN: Duration = Duration::from_millis(50);
 
 /// A type used to estimates a suitable send bitrate.
 ///
@@ -45,6 +47,13 @@ pub struct RateControl {
     last_estimate_update: Option<Instant>,
     // Last RTT estimate in micro-seconds
     last_rtt: Option<Duration>,
+    /// When the last decrease of the current overuse episode was applied. Cleared when the
+    /// estimate increases again.
+    episode_decreased_at: Option<Instant>,
+    /// Whether the newest feedback (for a repeat decrease: for packets sent after
+    /// `episode_decreased_at`) shows the path delivering packets slower than they were sent.
+    /// `None`: no such information, decreases are not gated.
+    fresh_link_limited: Option<bool>,
 }
 
 impl RateControl {
@@ -62,7 +71,20 @@ impl RateControl {
             averaged_observed_bitrate: MovingAverage::new(OBSERVED_BIT_RATE_SMOOTHING_FACTOR),
             last_estimate_update: None,
             last_rtt: None,
+            episode_decreased_at: None,
+            fresh_link_limited: None,
         }
+    }
+
+    /// When the last decrease of the current overuse episode was applied, if one was.
+    pub fn episode_decreased_at(&self) -> Option<Instant> {
+        self.episode_decreased_at
+    }
+
+    /// Whether the newest feedback shows the link limiting the packets (see
+    /// [`Self::decrease_allowed`]).
+    pub fn set_fresh_link_limited(&mut self, v: Option<bool>) {
+        self.fresh_link_limited = v;
     }
 
     /// Update with input from the delay controller.
@@ -100,7 +122,8 @@ impl RateControl {
 
                 // Only apply decrease if enough time has passed since last bitrate change
                 // or if throughput is critically low (< 50% of estimate)
-                if self.time_to_reduce_further(now, observed_bitrate) {
+                if self.time_to_reduce_further(now, observed_bitrate) && self.decrease_allowed(now)
+                {
                     self.decrease(observed_bitrate, now);
                 }
             }
@@ -121,6 +144,28 @@ impl RateControl {
         }
         self.averaged_observed_bitrate
             .update(observed_bitrate.as_f64());
+    }
+
+    /// A delay-based decrease is based on the acknowledged bitrate, which is what the sender
+    /// sent when the sender, not the link, limits it. A queue the sender did not build with its
+    /// media (a probe burst, or one draining after the sender lowered its rate) can still read
+    /// as overuse; a decrease to a fraction of an application-limited rate then throws the
+    /// estimate far below what the link carries. So a decrease needs the newest feedback to
+    /// show the link limiting the packets (they arrived more spread out than they were sent),
+    /// and a repeat decrease in one overuse episode also needs the RTT-based reduction
+    /// interval plus [`REPEAT_DECREASE_MARGIN`] since the last one, with that feedback for
+    /// packets sent after it.
+    fn decrease_allowed(&self, now: Instant) -> bool {
+        let Some(link_limited) = self.fresh_link_limited else {
+            return true;
+        };
+        let Some(at) = self.episode_decreased_at else {
+            return link_limited;
+        };
+        let rtt = self.last_rtt.unwrap_or(DEFAULT_BACKOFF_TIME);
+        let interval = rtt.clamp(Duration::from_millis(10), Duration::from_millis(200))
+            + REPEAT_DECREASE_MARGIN;
+        link_limited && now.saturating_duration_since(at) >= interval
     }
 
     /// Check if it's time to reduce the bitrate further.
@@ -242,6 +287,11 @@ impl RateControl {
         let max = observed_bitrate.as_f64() * MAX_ESTIMATE_RATIO;
         new_estimate = max.min(new_estimate).min(increase_limit.as_f64());
 
+        // The estimate grows again: the overuse episode is over.
+        if new_estimate > self.estimated_bitrate.as_f64() {
+            self.episode_decreased_at = None;
+        }
+
         self.update_estimate(new_estimate.into(), now);
     }
 
@@ -267,6 +317,7 @@ impl RateControl {
         self.state = State::Hold;
         log_rate_control_state!(self.state as i8);
         self.update_estimate(new_estimate, now);
+        self.episode_decreased_at = Some(now);
     }
 
     fn is_near_convergence(&self) -> bool {

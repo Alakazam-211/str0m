@@ -15,6 +15,11 @@ const UPDATE_INTERVAL: Duration = Duration::from_millis(25);
 const MAX_TWCC_GAP: Duration = Duration::from_millis(500);
 /// RFC 6298: Exponentially Weighted Moving Average smoothing factor for RTT (alpha = 1/8)
 const RTT_SMOOTHING_FACTOR: f64 = 0.125;
+/// `link_limited`: the fewest packets, the shortest send span, and how much longer the receive
+/// span must be.
+const LINK_LIMITED_MIN_PACKETS: usize = 4;
+const LINK_LIMITED_MIN_SPAN: Duration = Duration::from_millis(10);
+const LINK_LIMITED_SPREAD: f64 = 1.1;
 
 /// Delay controller for googcc inspired BWE.
 ///
@@ -37,6 +42,29 @@ pub struct DelayController {
     next_timeout: Instant,
     /// The last time we ingested a TWCC report.
     last_twcc_report: Instant,
+}
+
+/// Whether `packets` took noticeably longer to arrive than to be sent (the path, not the sender,
+/// limits their rate). Needs a few packets sent over at least [`LINK_LIMITED_MIN_SPAN`].
+fn link_limited<'a>(packets: impl Iterator<Item = &'a AckedPacket>) -> bool {
+    let mut n = 0;
+    let (mut send_min, mut send_max) = (None::<Instant>, None::<Instant>);
+    let (mut recv_min, mut recv_max) = (None::<Instant>, None::<Instant>);
+    for p in packets {
+        n += 1;
+        send_min = Some(send_min.map_or(p.local_send_time, |t| t.min(p.local_send_time)));
+        send_max = Some(send_max.map_or(p.local_send_time, |t| t.max(p.local_send_time)));
+        recv_min = Some(recv_min.map_or(p.remote_recv_time, |t| t.min(p.remote_recv_time)));
+        recv_max = Some(recv_max.map_or(p.remote_recv_time, |t| t.max(p.remote_recv_time)));
+    }
+    let (Some(s0), Some(s1), Some(r0), Some(r1)) = (send_min, send_max, recv_min, recv_max) else {
+        return false;
+    };
+    let send_span = s1 - s0;
+    let recv_span = r1 - r0;
+    n >= LINK_LIMITED_MIN_PACKETS
+        && send_span >= LINK_LIMITED_MIN_SPAN
+        && recv_span.as_secs_f64() > send_span.as_secs_f64() * LINK_LIMITED_SPREAD
 }
 
 impl DelayController {
@@ -92,6 +120,14 @@ impl DelayController {
         }
 
         let new_hypothesis = self.trendline_estimator.hypothesis();
+
+        // Does the path deliver this feedback's packets (after an overuse episode's last
+        // decrease: those sent after it) slower than they were sent?
+        let fresh = match self.rate_control.episode_decreased_at() {
+            Some(at) => link_limited(acked.iter().filter(|p| p.local_send_time > at)),
+            None => link_limited(acked.iter()),
+        };
+        self.rate_control.set_fresh_link_limited(Some(fresh));
 
         self.update_estimate(
             new_hypothesis,
