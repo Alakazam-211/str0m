@@ -33,6 +33,13 @@ It also carries one upstream contributor's commit ahead of its release: `7a925e9
 retransmission without RTX via in-band resend on the main SSRC, by Jury Jaraševič
 ([str0m#980](https://github.com/algesten/str0m/pull/980)).
 
+It also applies upstream fixes released in str0m 0.25.0, ahead of a rebase onto that release:
+
+- `741a0af8` STUN MESSAGE-INTEGRITY attribute handling (upstream `5a083231`).
+- `05539872` SDP RTX `apt` consistency check (upstream `dc317173`).
+- `b33b9aed` dimpl 0.9.0 (upstream `8df68dba`, `00d8df5b`, `3a27371f`); MSRV 1.89.
+- `86872d6f` A test that a DTLS client sending an empty Certificate does not complete the handshake.
+
 ## Join us
 
 We are discussing str0m things on Discord. Join us using this [invitation link][discord].
