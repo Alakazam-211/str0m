@@ -1,5 +1,6 @@
 # Unreleased
 
+  * Apply upstream STUN MESSAGE-INTEGRITY attribute handling (upstream 5a083231)
   * Support NACK retransmission without RTX, resending in-band on the main SSRC
   * Add `PayloadParams::set_resend` to configure or disable RTX
   * Add `StreamTx::set_nack_policy` to bound resends per packet (count, hold-off, queue size)
