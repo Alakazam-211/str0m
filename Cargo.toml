@@ -1,10 +1,11 @@
 [package]
-name = "str0m"
-version = "0.24.0"
-authors = ["Martin Algesten <martin@algesten.se>", "Hugo Tunius <h@tunius.se>", "Davide Bertola <dade@dadeb.it>"]
-description = "WebRTC library in Sans-IO style"
+name = "sew-str0m"
+version = "0.25.0"
+authors = ["Martin Algesten <martin@algesten.se>", "Hugo Tunius <h@tunius.se>", "Davide Bertola <dade@dadeb.it>", "Alakazam Labs"]
+description = "Fork of str0m (https://github.com/algesten/str0m) with Sew's patches. WebRTC library in Sans-IO style"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/algesten/str0m"
+repository = "https://github.com/Alakazam-211/str0m"
+homepage = "https://github.com/Alakazam-211/str0m"
 readme = "README.md"
 keywords = ["webrtc", "streaming", "video", "audio", "media"]
 categories = ["web-programming", "multimedia", "network-programming"]
@@ -38,12 +39,14 @@ members = [
 exclude = ["crates/fuzz"]
 
 [workspace.dependencies]
-# Internal crates
-str0m = { version = "0.24.0", path = ".", default-features = false }
-str0m-proto = { version = "0.7.0", path = "crates/proto", default-features = false }
-is = { version = "0.11.1", path = "crates/is", default-features = false }
-str0m-netem = { version = "0.4.0", path = "crates/netem" }
-str0m-aws-lc-rs = { version = "0.6.0", path = "crypto/aws-lc-rs" }
+# Internal crates. The fork publishes the crates Sew's dependency graph needs, renamed with a
+# `sew-` prefix and keeping upstream's library names: sew-str0m, sew-str0m-proto, sew-str0m-is
+# and sew-str0m-aws-lc-rs. The other members are not published from this fork (publish = false).
+str0m = { package = "sew-str0m", version = "0.25.0", path = ".", default-features = false }
+str0m-proto = { package = "sew-str0m-proto", version = "0.7.1", path = "crates/proto", default-features = false }
+is = { package = "sew-str0m-is", version = "0.11.2", path = "crates/is", default-features = false }
+str0m-netem = { path = "crates/netem" }
+str0m-aws-lc-rs = { package = "sew-str0m-aws-lc-rs", version = "0.6.1", path = "crypto/aws-lc-rs" }
 str0m-rust-crypto = { version = "0.6.0", path = "crypto/rust-crypto" }
 str0m-openssl = { version = "0.6.0", path = "crypto/openssl" }
 str0m-apple-crypto = { version = "0.6.0", path = "crypto/apple-crypto" }
@@ -58,7 +61,8 @@ combine = "4.6.6"
 subtle = "2.0.0"
 arrayvec = "0.7.6"
 serde = { version = "1.0.152", features = ["derive"] }
-dimpl = { version = "0.7.4", default-features = false }
+# The dimpl fork (https://github.com/Alakazam-211/dimpl), published as sew-dimpl.
+dimpl = { package = "sew-dimpl", version = "0.7.5", default-features = false }
 drv = { version = "0.4.3" }
 time = "0.3"
 base64ct = "1"
@@ -97,17 +101,22 @@ pcap-file = "2.0.0"
 regex = "1.11.1"
 rand = "0.9.0"
 
+# The library keeps upstream's name, so code says `str0m::…`; dependents rename the package:
+# `str0m = { package = "sew-str0m", version = "0.25.0" }`.
+[lib]
+name = "str0m"
+
+# The source still names upstream's provider features (src/crypto, tests/common.rs); they are
+# not features of this package.
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(feature, values("rust-crypto", "openssl", "openssl-dimpl", "wincrypto", "wincrypto-dimpl", "apple-crypto", "vendored"))'] }
+
 [features]
 default = ["aws-lc-rs", "examples"]
 aws-lc-rs = ["dep:str0m-aws-lc-rs"]
-rust-crypto = ["dep:str0m-rust-crypto"]
-openssl = ["dep:str0m-openssl"]
-openssl-dimpl = ["dep:str0m-openssl", "str0m-openssl/dimpl"]
-wincrypto = ["dep:str0m-wincrypto"]
-# Compatibility alias: wincrypto always uses dimpl + CNG.
-wincrypto-dimpl = ["wincrypto"]
-apple-crypto = ["dep:str0m-apple-crypto"]
-vendored = ["str0m-openssl?/vendored"]
+# sew-str0m ships the aws-lc-rs provider only. Upstream's other providers (rust-crypto,
+# openssl, wincrypto, apple-crypto) would each need forking to share this fork's dimpl, and Sew
+# does not use them; an application can still pass its own `CryptoProvider` to `RtcConfig`.
 unversioned = []
 
 # Redacts personally identifiable information (PII) from logs debug and above
@@ -148,19 +157,11 @@ drv = { workspace = true, optional = true }
 
 # Crypto providers
 str0m-aws-lc-rs = { workspace = true, optional = true }
-str0m-rust-crypto = { workspace = true, optional = true }
-str0m-openssl = { workspace = true, optional = true }
-
-[target.'cfg(target_vendor = "apple")'.dependencies]
-str0m-apple-crypto = { workspace = true, optional = true }
-
-[target.'cfg(windows)'.dependencies]
-# Windows Crypto (dimpl + CNG)
-str0m-wincrypto = { workspace = true, optional = true }
 
 [dev-dependencies]
 rouille.workspace = true
-str0m-rust-crypto.workspace = true
+# Path only, so not part of the published manifest.
+str0m-rust-crypto = { path = "crypto/rust-crypto" }
 tempfile.workspace = true
 url.workspace = true
 serde_json.workspace = true
@@ -171,7 +172,7 @@ regex.workspace = true
 rand.workspace = true
 
 # Package rename not supported with workspace inheritance
-netem = { package = "str0m-netem", version = "0.4.0", path = "crates/netem" }
+netem = { package = "str0m-netem", path = "crates/netem" }
 
 # dummy package that enables "_internal_test_exports"
 _str0m_test = { path = "crates/_str0m_test" }

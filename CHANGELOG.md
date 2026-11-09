@@ -1,10 +1,30 @@
-# Unreleased
+# sew-str0m 0.25.0 (sew-str0m-proto 0.7.1, sew-str0m-is 0.11.2, sew-str0m-aws-lc-rs 0.6.1)
 
-  * Support NACK retransmission without RTX, resending in-band on the main SSRC
+The first release of the fork of str0m published for Sew. Upstream base: str0m 0.24.0
+(str0m-proto 0.7.0, is 0.11.1, str0m-aws-lc-rs 0.6.0), commit `95e5038c`, tag `0.24`.
+
+  * Packages renamed `sew-str0m`, `sew-str0m-proto`, `sew-str0m-is` and `sew-str0m-aws-lc-rs`;
+    the libraries keep upstream's names (`str0m`, `str0m_proto`, `is`, `str0m_aws_lc_rs`)
+  * Built on `sew-dimpl` 0.7.5, the dimpl fork, in place of dimpl
+  * Only the aws-lc-rs crypto provider ships: the `rust-crypto`, `openssl`, `openssl-dimpl`,
+    `wincrypto`, `wincrypto-dimpl`, `apple-crypto` and `vendored` features are gone (breaking)
+  * `MediaEgressStats` carries `packets_resent`, `bytes_resent`, `nacks_repeated` and
+    `resends_dropped` (new public fields of an exhaustive struct: breaking)
+  * Support NACK retransmission without RTX, resending in-band on the main SSRC (str0m#980)
   * Add `PayloadParams::set_resend` to configure or disable RTX
   * Add `StreamTx::set_nack_policy` to bound resends per packet (count, hold-off, queue size)
   * Let the application supply local ICE credentials on restarts: `SdpApi::ice_restart_with` and
     `SdpApi::set_restart_credentials` (for remote-initiated restarts in `accept_offer`)
+  * Do not pad on a stream whose media stopped sending
+  * Loop instead of recursing in `Rtc::do_poll_output`
+  * `reset_stream_tx` keeps the send stream under its new SSRC
+  * Capped initial probes no longer lower the estimate below the start estimate (str0m#1126)
+  * A delay-based decrease needs the link, not the sender, to limit the acknowledged packets
+    (str0m#1127)
+  * is: an ice-lite controlled agent sends on the most recently nominated pair
+  * is: ice-lite renomination follows a fresh nomination, not the latest one
+
+The entries below are upstream str0m's.
 
 # 0.24.0
 

@@ -1,5 +1,7 @@
 [package]
 name = "str0m-wincrypto"
+# Not published from this fork (sew-str0m publishes the crates Sew uses only).
+publish = false
 version = "0.8.1"
 description = "Supporting crate for str0m"
 license = "MIT OR Apache-2.0"

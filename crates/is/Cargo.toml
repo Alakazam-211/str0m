@@ -1,13 +1,18 @@
 [package]
-name = "is"
-version = "0.11.1"
-authors = ["Martin Algesten <martin@algesten.se>", "Thomas Eizinger <thomas@eizinger.io>"]
-description = "ICE (Interactive Connectivity Establishment) in Sans-IO style"
+name = "sew-str0m-is"
+version = "0.11.2"
+authors = ["Martin Algesten <martin@algesten.se>", "Thomas Eizinger <thomas@eizinger.io>", "Alakazam Labs"]
+description = "Fork of str0m (https://github.com/algesten/str0m) with Sew's patches. ICE (Interactive Connectivity Establishment) in Sans-IO style"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/algesten/str0m"
+repository = "https://github.com/Alakazam-211/str0m"
+homepage = "https://github.com/Alakazam-211/str0m"
 readme = "README.md"
 edition = "2024"
 rust-version = "1.85.0"
+
+# The library keeps upstream's name (is); the package is renamed.
+[lib]
+name = "is"
 
 [features]
 default = ["sha1"]

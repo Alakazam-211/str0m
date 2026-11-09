@@ -11,6 +11,7 @@ cargo-fuzz = true
 libfuzzer-sys = "0.4"
 
 [dependencies.str0m]
+package = "sew-str0m"
 path = "../.."
 features = ["_internal_test_exports"]
 

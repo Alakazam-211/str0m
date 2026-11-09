@@ -1,5 +1,7 @@
 [package]
 name = "str0m-netem"
+# Not published from this fork (sew-str0m publishes the crates Sew uses only).
+publish = false
 version = "0.4.0"
 authors = ["Martin Algesten <martin@algesten.se>"]
 description = "Sans-IO network emulation for testing str0m under simulated network conditions"

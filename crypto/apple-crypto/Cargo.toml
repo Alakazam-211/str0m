@@ -1,5 +1,7 @@
 [package]
 name = "str0m-apple-crypto"
+# Not published from this fork (sew-str0m publishes the crates Sew uses only).
+publish = false
 version = "0.6.0"
 description = "Apple CommonCrypto/Security framework backend for str0m WebRTC"
 edition = "2024"
