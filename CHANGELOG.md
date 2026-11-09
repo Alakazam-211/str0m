@@ -1,5 +1,6 @@
 # Unreleased
 
+  * Apply upstream SDP RTX apt consistency check (upstream dc317173)
   * Apply upstream STUN MESSAGE-INTEGRITY attribute handling (upstream 5a083231)
   * Support NACK retransmission without RTX, resending in-band on the main SSRC
   * Add `PayloadParams::set_resend` to configure or disable RTX
