@@ -1,5 +1,6 @@
 # Unreleased
 
+  * Apply upstream DTLS inactive-state handling (upstream 976d38f6)
   * Update to dimpl 0.9.0 and raise MSRV to Rust 1.89 (upstream 8df68dba, 00d8df5b, 3a27371f)
   * Apply upstream SDP RTX apt consistency check (upstream dc317173)
   * Apply upstream STUN MESSAGE-INTEGRITY attribute handling (upstream 5a083231)

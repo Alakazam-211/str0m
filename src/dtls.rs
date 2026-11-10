@@ -10,7 +10,7 @@ use crate::crypto::dtls::{DtlsCert, DtlsOutput, ProtocolVersion};
 use crate::crypto::dtls::{DtlsInstance, DtlsProvider, DtlsVersion};
 use crate::crypto::{CryptoError, DtlsError};
 use crate::io::DatagramSend;
-use crate::util::already_happened;
+use crate::util::{already_happened, not_happening};
 
 /// Encapsulation of DTLS.
 ///
@@ -129,6 +129,10 @@ impl Dtls {
 
     /// Poll for output from the DTLS instance.
     pub fn poll_output<'a>(&mut self, buf: &'a mut [u8]) -> DtlsOutput<'a> {
+        if !self.is_inited() {
+            return DtlsOutput::Timeout(not_happening());
+        }
+
         let next = self.instance.poll_output(buf);
 
         if let DtlsOutput::Packet(packet) = next {
@@ -150,7 +154,7 @@ impl Dtls {
 
     /// Handle an incoming DTLS packet.
     pub fn handle_receive(&mut self, packet: &[u8]) -> Result<(), DtlsError> {
-        if self.active_state.is_none() {
+        if !self.is_inited() {
             debug!("Ignoring DTLS datagram prior to DTLS start");
             return Ok(());
         }
@@ -187,6 +191,10 @@ impl Dtls {
 
     /// Handle a timeout event.
     pub fn handle_timeout(&mut self, now: Instant) -> Result<(), DtlsError> {
+        if !self.is_inited() {
+            return Ok(());
+        }
+
         self.instance
             .handle_timeout(now)
             .map_err(|e| DtlsError::CryptoError(CryptoError::Other(format!("DTLS error: {}", e))))
