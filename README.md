@@ -38,6 +38,8 @@ It also applies upstream fixes released in str0m 0.25.0, ahead of a rebase onto 
 - `741a0af8` STUN MESSAGE-INTEGRITY attribute handling (upstream `5a083231`).
 - `05539872` SDP RTX `apt` consistency check (upstream `dc317173`).
 - `b33b9aed` dimpl 0.9.0 (upstream `8df68dba`, `00d8df5b`, `3a27371f`); MSRV 1.89.
+- `ab49b03a` DTLS inactive-state handling (upstream `976d38f6`, released in 0.24.1), which the
+  dimpl 0.9.0 glue builds on.
 - `86872d6f` A test that a DTLS client sending an empty Certificate does not complete the handshake.
 
 ## Join us
