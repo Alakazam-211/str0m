@@ -6,7 +6,7 @@ version = 4
 name = "_str0m_test"
 version = "0.1.0"
 dependencies = [
- "str0m",
+ "sew-str0m",
 ]
 
 [[package]]
@@ -33,7 +33,7 @@ checksum = "35f0f96ce78e38c3dc6d8948aa8163d06385be74000f3c7a95bf1eef35d3ea32"
 dependencies = [
  "cipher",
  "cpubits",
- "cpufeatures 0.3.1",
+ "cpufeatures",
 ]
 
 [[package]]
@@ -305,7 +305,7 @@ checksum = "65c35e4b699c7e15ccbe7ee35c005e4fc0a278d22238a2857e6ce2dadeda1b06"
 dependencies = [
  "cfg-if",
  "cipher",
- "cpufeatures 0.3.1",
+ "cpufeatures",
  "rand_core 0.10.1",
 ]
 
@@ -404,15 +404,6 @@ checksum = "15b85f9c39137c3a891689859392b1bd49812121d0d61c9caf00d46ed5ce06ae"
 
 [[package]]
 name = "cpufeatures"
-version = "0.2.17"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59ed5838eebb26a2bb2e58f6d5b5316989ae9d08bab10e0e6d103e656d1b0280"
-dependencies = [
- "libc",
-]
-
-[[package]]
-name = "cpufeatures"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5ca28b0ae3115b884660db4118d803791fd6756b6e88f39c0f3f7859060d7566"
@@ -492,29 +483,14 @@ dependencies = [
 
 [[package]]
 name = "curve25519-dalek"
-version = "4.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97fb8b7c4503de7d6ae7b42ab72a5a59857b4c937ec27a3d4539dba95b5ab2be"
-dependencies = [
- "cfg-if",
- "cpufeatures 0.2.17",
- "curve25519-dalek-derive",
- "fiat-crypto 0.2.9",
- "rustc_version",
- "subtle",
- "zeroize",
-]
-
-[[package]]
-name = "curve25519-dalek"
 version = "5.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b5eed333089e2e1c1ac8c6c0398e5e2497b4c9926ca6d0365ed1e099afa5bc23"
 dependencies = [
  "cfg-if",
- "cpufeatures 0.3.1",
+ "cpufeatures",
  "curve25519-dalek-derive",
- "fiat-crypto 0.3.0",
+ "fiat-crypto",
  "rustc_version",
  "subtle",
  "zeroize",
@@ -645,7 +621,7 @@ dependencies = [
  "spki",
  "subtle",
  "time",
- "x25519-dalek 3.0.0",
+ "x25519-dalek",
  "x509-cert",
 ]
 
@@ -748,12 +724,6 @@ dependencies = [
  "rand_core 0.10.1",
  "subtle",
 ]
-
-[[package]]
-name = "fiat-crypto"
-version = "0.2.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "28dea519a9695b9977216879a3ebfddf92f1c08c05d984f8996aecd6ecdc811d"
 
 [[package]]
 name = "fiat-crypto"
@@ -1084,21 +1054,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "is"
-version = "0.12.0"
-dependencies = [
- "crc",
- "hmac",
- "serde",
- "serde_json",
- "sha1",
- "str0m-proto",
- "subtle",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "itoa"
 version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1390,7 +1345,7 @@ checksum = "d17b851e6b3e378ab4ecb07fa2ed23f4d15f075735f8fec9fa1e7bdce5f8301f"
 dependencies = [
  "ecdsa",
  "elliptic-curve",
- "fiat-crypto 0.3.0",
+ "fiat-crypto",
  "primefield",
  "primeorder",
  "sha2",
@@ -1450,7 +1405,7 @@ version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e2d0073b297041425c7c3df6eb4792d598a15323fe63346852b092eca02904c"
 dependencies = [
- "cpufeatures 0.3.1",
+ "cpufeatures",
  "universal-hash",
 ]
 
@@ -1461,7 +1416,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f0fa31d631f2b2cb2a544d0aa321ce847a94764d701ca2becc411138b93d49cd"
 dependencies = [
  "cpubits",
- "cpufeatures 0.3.1",
+ "cpufeatures",
  "universal-hash",
 ]
 
@@ -1934,13 +1889,63 @@ dependencies = [
 ]
 
 [[package]]
+name = "sew-str0m"
+version = "0.25.1"
+dependencies = [
+ "_str0m_test",
+ "arrayvec",
+ "base64ct",
+ "combine",
+ "dimpl",
+ "drv",
+ "fastrand",
+ "pcap-file",
+ "rand 0.9.5",
+ "regex",
+ "rouille",
+ "sctp-proto",
+ "serde",
+ "serde_json",
+ "sew-str0m-is",
+ "str0m-apple-crypto",
+ "str0m-aws-lc-rs",
+ "str0m-netem",
+ "str0m-openssl",
+ "str0m-proto",
+ "str0m-rust-crypto",
+ "str0m-wincrypto",
+ "subtle",
+ "systemstat",
+ "tempfile",
+ "time",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+]
+
+[[package]]
+name = "sew-str0m-is"
+version = "0.12.1"
+dependencies = [
+ "crc",
+ "hmac",
+ "serde",
+ "serde_json",
+ "sha1",
+ "str0m-proto",
+ "subtle",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "sha1"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aacc4cc499359472b4abe1bf11d0b12e688af9a805fa5e3016f9a386dc2d0214"
 dependencies = [
  "cfg-if",
- "cpufeatures 0.3.1",
+ "cpufeatures",
  "digest",
 ]
 
@@ -1957,7 +1962,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47d7069beb7d6ac7b9acd1039986e73443f24234f41074da099d6f994ac9ad19"
 dependencies = [
  "cfg-if",
- "cpufeatures 0.3.1",
+ "cpufeatures",
  "digest",
 ]
 
@@ -2021,43 +2026,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
 
 [[package]]
-name = "str0m"
-version = "0.25.0"
-dependencies = [
- "_str0m_test",
- "arrayvec",
- "base64ct",
- "combine",
- "dimpl",
- "drv",
- "fastrand",
- "is",
- "pcap-file",
- "rand 0.9.5",
- "regex",
- "rouille",
- "sctp-proto",
- "serde",
- "serde_json",
- "str0m-apple-crypto",
- "str0m-aws-lc-rs",
- "str0m-netem",
- "str0m-openssl",
- "str0m-proto",
- "str0m-rust-crypto",
- "str0m-wincrypto",
- "subtle",
- "systemstat",
- "tempfile",
- "time",
- "tracing",
- "tracing-subscriber",
- "url",
-]
-
-[[package]]
 name = "str0m-apple-crypto"
 version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "45f06db67d575095d9c87d152e8b45c85e13ab4a21e2132e494d294eaa11bad4"
 dependencies = [
  "core-foundation",
  "der",
@@ -2077,6 +2049,8 @@ dependencies = [
 [[package]]
 name = "str0m-aws-lc-rs"
 version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8ec90dfd6ceb4b82131b494e21ee555ad35d565bdf9ab4077fd67924a0e8a5fe"
 dependencies = [
  "aws-lc-rs",
  "dimpl",
@@ -2087,6 +2061,8 @@ dependencies = [
 [[package]]
 name = "str0m-netem"
 version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "45136c0dfce77ad05b1dc6d8c60924034742252828a22183b27c411f75d9762c"
 dependencies = [
  "fastrand",
  "str0m-proto",
@@ -2095,8 +2071,9 @@ dependencies = [
 [[package]]
 name = "str0m-openssl"
 version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c4fd2de0fd9f7a6c05f620bbfe19d6b6551d16520ebf3620e770d5471a9f9a3"
 dependencies = [
- "arrayvec",
  "dimpl",
  "libc",
  "openssl",
@@ -2108,6 +2085,8 @@ dependencies = [
 [[package]]
 name = "str0m-proto"
 version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6a9a46a0f013add7a1d0d53d9bc92c85c1ac95243140fe0d073fb6e57c99b63"
 dependencies = [
  "base64ct",
  "dimpl",
@@ -2121,6 +2100,8 @@ dependencies = [
 [[package]]
 name = "str0m-rust-crypto"
 version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "298554811ee24adbfee0bf8628c2e220989543c83c55c3869437dc1f3a43e340"
 dependencies = [
  "aes",
  "aes-gcm",
@@ -2137,12 +2118,12 @@ dependencies = [
 [[package]]
 name = "str0m-wincrypto"
 version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1f8c61998828be8dd31e00601df220b4eff97839e5027ad2a52929d1501bdae5"
 dependencies = [
  "dimpl",
- "rand_core 0.6.4",
  "str0m-proto",
  "windows",
- "x25519-dalek 2.0.1",
 ]
 
 [[package]]
@@ -2799,23 +2780,11 @@ checksum = "1ffae5123b2d3fc086436f8834ae3ab053a283cfac8fe0a0b8eaae044768a4c4"
 
 [[package]]
 name = "x25519-dalek"
-version = "2.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7e468321c81fb07fa7f4c636c3972b9100f0346e5b6a9f2bd0603a52f7ed277"
-dependencies = [
- "curve25519-dalek 4.1.3",
- "rand_core 0.6.4",
- "serde",
- "zeroize",
-]
-
-[[package]]
-name = "x25519-dalek"
 version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e7e8131a03190127fb2263afc72b322ecadae46b6ff8c6f399ff5d02f5559af6"
 dependencies = [
- "curve25519-dalek 5.0.0",
+ "curve25519-dalek",
  "getrandom 0.4.3",
  "rand_core 0.10.1",
  "zeroize",
@@ -2928,20 +2897,6 @@ name = "zeroize"
 version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e13c156562582aa81c60cb29407084cdb54c4164760106ab78e6c5b0858cf64e"
-dependencies = [
- "zeroize_derive",
-]
-
-[[package]]
-name = "zeroize_derive"
-version = "1.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c50655cbb0fe3fc43170059e702f1ce5e19b84cec58dc87b037a09935c2f328"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.119",
-]
 
 [[package]]
 name = "zerotrie"

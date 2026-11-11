@@ -13,8 +13,9 @@ See more details in below section.
 
 ## About this fork
 
-This is a fork of [str0m](https://github.com/algesten/str0m): upstream str0m 0.25.0 plus Sew's
-patches, which are listed in [CHANGELOG.md](CHANGELOG.md) under "Unreleased".
+This is a fork of [str0m](https://github.com/algesten/str0m), published as `sew-str0m` and
+`sew-str0m-is`: upstream str0m 0.25.0 plus Sew's patches, which are listed in
+[CHANGELOG.md](https://github.com/Alakazam-211/str0m/blob/sew-crates-io-0.25/CHANGELOG.md) under 0.25.1.
 
 ## Join us
 

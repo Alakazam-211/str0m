@@ -1,5 +1,11 @@
 # is
 
+## About this fork
+
+This is a fork of [str0m](https://github.com/algesten/str0m), published as `sew-str0m` and
+`sew-str0m-is`: upstream str0m 0.25.0 plus Sew's patches, which are listed in
+[CHANGELOG.md](https://github.com/Alakazam-211/str0m/blob/sew-crates-io-0.25/CHANGELOG.md) under 0.25.1.
+
 ## is -- ICE in Sans-IO style
 
 Standalone [ICE][rfc8445] agent extracted from the [str0m][str0m] WebRTC library.

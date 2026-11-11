@@ -1,5 +1,9 @@
 # Unreleased
 
+# 0.25.1
+
+sew-str0m 0.25.1 and sew-str0m-is 0.12.1: upstream str0m 0.25.0 (is 0.12.0) plus these patches.
+
   * Support NACK retransmission without RTX, resending in-band on the main SSRC
   * Add `PayloadParams::set_resend` to configure or disable RTX
   * Add `StreamTx::set_nack_policy` to bound resends per packet (count, hold-off, queue size)

@@ -1,10 +1,11 @@
 [package]
-name = "str0m"
-version = "0.25.0"
-authors = ["Martin Algesten <martin@algesten.se>", "Hugo Tunius <h@tunius.se>", "Davide Bertola <dade@dadeb.it>"]
-description = "WebRTC library in Sans-IO style"
+name = "sew-str0m"
+version = "0.25.1"
+authors = ["Martin Algesten <martin@algesten.se>", "Hugo Tunius <h@tunius.se>", "Davide Bertola <dade@dadeb.it>", "Alakazam Labs"]
+description = "Fork of str0m (https://github.com/algesten/str0m) with Sew's patches. WebRTC library in Sans-IO style"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/algesten/str0m"
+repository = "https://github.com/Alakazam-211/str0m"
+homepage = "https://github.com/Alakazam-211/str0m"
 readme = "README.md"
 keywords = ["webrtc", "streaming", "video", "audio", "media"]
 categories = ["web-programming", "multimedia", "network-programming"]
@@ -24,30 +25,36 @@ rust-version = "1.89.0"
 # security patching than updating statically linked software.
 
 [workspace]
+# This fork publishes only the crates its patches change: sew-str0m (this package) and
+# sew-str0m-is (crates/is). The other str0m crates come from crates.io at the matching upstream
+# release; their directories stay as upstream has them and are not workspace members here.
 members = [
-  "crates/proto",
   "crates/is",
-  "crates/netem",
   "crates/_str0m_test",
+]
+exclude = [
+  "crates/fuzz",
+  "crates/proto",
+  "crates/netem",
   "crypto/aws-lc-rs",
   "crypto/rust-crypto",
   "crypto/openssl",
   "crypto/apple-crypto",
-  "crypto/wincrypto"
+  "crypto/wincrypto",
 ]
-exclude = ["crates/fuzz"]
 
 [workspace.dependencies]
-# Internal crates
-str0m = { version = "0.25.0", path = ".", default-features = false }
-str0m-proto = { version = "0.8.0", path = "crates/proto", default-features = false }
-is = { version = "0.12.0", path = "crates/is", default-features = false }
-str0m-netem = { version = "0.5.0", path = "crates/netem" }
-str0m-aws-lc-rs = { version = "0.7.0", path = "crypto/aws-lc-rs" }
-str0m-rust-crypto = { version = "0.7.0", path = "crypto/rust-crypto" }
-str0m-openssl = { version = "0.7.0", path = "crypto/openssl" }
-str0m-apple-crypto = { version = "0.7.0", path = "crypto/apple-crypto" }
-str0m-wincrypto = { version = "0.9.0", path = "crypto/wincrypto" }
+# This fork's crates keep upstream's library names (str0m, is), so code says `str0m::…`.
+str0m = { package = "sew-str0m", version = "0.25.1", path = ".", default-features = false }
+is = { package = "sew-str0m-is", version = "0.12.1", path = "crates/is", default-features = false }
+# Upstream's crates, from crates.io (str0m 0.25.0's releases).
+str0m-proto = { version = "0.8.0", default-features = false }
+str0m-netem = { version = "0.5.0" }
+str0m-aws-lc-rs = { version = "0.7.0" }
+str0m-rust-crypto = { version = "0.7.0" }
+str0m-openssl = { version = "0.7.0" }
+str0m-apple-crypto = { version = "0.7.0" }
+str0m-wincrypto = { version = "0.9.0" }
 _str0m_test = { path = "crates/_str0m_test" }
 
 # Core dependencies
@@ -96,6 +103,11 @@ systemstat = "0.2.2"
 pcap-file = "2.0.0"
 regex = "1.11.1"
 rand = "0.9.0"
+
+# The library keeps upstream's name, so code says `str0m::…`; dependents rename the package:
+# `str0m = { package = "sew-str0m", version = "0.25.1" }`.
+[lib]
+name = "str0m"
 
 [features]
 default = ["aws-lc-rs", "examples"]
@@ -171,7 +183,7 @@ regex.workspace = true
 rand.workspace = true
 
 # Package rename not supported with workspace inheritance
-netem = { package = "str0m-netem", version = "0.5.0", path = "crates/netem" }
+netem = { package = "str0m-netem", version = "0.5.0" }
 
 # dummy package that enables "_internal_test_exports"
 _str0m_test = { path = "crates/_str0m_test" }
