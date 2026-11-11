@@ -156,6 +156,14 @@ pub struct MediaEgressStats {
     pub plis: u64,
     /// Number of nacks received.
     pub nacks: u64,
+    /// Number of resends of a packet that had already been resent at least once.
+    ///
+    /// Only counted with a [`NackPolicy`][crate::rtp::NackPolicy].
+    pub nacks_repeated: u64,
+    /// Number of resends dropped because the resend queue was full.
+    ///
+    /// Only counted with a [`NackPolicy`][crate::rtp::NackPolicy].
+    pub resends_dropped: u64,
     /// Round-trip-time extracted from the last RTCP receiver report.
     pub rtt: Option<Duration>,
     /// Fraction of packets lost averaged from the RTCP receiver reports received.

@@ -796,7 +796,7 @@ pub mod rtp {
     };
     pub use crate::rtp_::{RtpHeader, SeqNo, Ssrc, VideoOrientation};
     pub use crate::streams::{
-        RtpPacket, RtpWrite, StreamPaused, StreamRx, StreamTx, StreamTxQueueInfo,
+        NackPolicy, RtpPacket, RtpWrite, StreamPaused, StreamRx, StreamTx, StreamTxQueueInfo,
     };
 
     /// Debug output of the unencrypted RTP and RTCP packets.

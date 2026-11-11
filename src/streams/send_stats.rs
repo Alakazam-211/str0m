@@ -27,6 +27,10 @@ pub(crate) struct StreamTxStats {
     plis: u64,
     /// count of NACKs received
     nacks: u64,
+    /// count of resends of a packet that had already been resent (NACK policy only)
+    nacks_repeated: u64,
+    /// count of resends dropped because the resend queue was full (NACK policy only)
+    resends_dropped: u64,
     /// round trip time
     /// Can be null in case of missing or bad reports
     rtt: Option<Duration>,
@@ -55,6 +59,8 @@ impl StreamTxStats {
             firs: 0,
             plis: 0,
             nacks: 0,
+            nacks_repeated: 0,
+            resends_dropped: 0,
             rtt: None,
             losses: Losses::new(enable_stats),
             last_rr: None,
@@ -74,6 +80,28 @@ impl StreamTxStats {
 
     pub fn increase_nacks(&mut self) {
         self.nacks += 1;
+    }
+
+    pub fn increase_nacks_repeated(&mut self) {
+        self.nacks_repeated += 1;
+    }
+
+    pub fn increase_resends_dropped(&mut self) {
+        self.resends_dropped += 1;
+    }
+
+    pub fn rtt(&self) -> Option<Duration> {
+        self.rtt
+    }
+
+    #[cfg(test)]
+    pub fn set_rtt_for_test(&mut self, rtt: Option<Duration>) {
+        self.rtt = rtt;
+    }
+
+    #[cfg(test)]
+    pub fn nack_policy_counts(&self) -> (u64, u64) {
+        (self.nacks_repeated, self.resends_dropped)
     }
 
     pub fn increase_plis(&mut self) {
@@ -131,6 +159,8 @@ impl StreamTxStats {
                 firs: self.firs,
                 plis: self.plis,
                 nacks: self.nacks,
+                nacks_repeated: self.nacks_repeated,
+                resends_dropped: self.resends_dropped,
                 rtt: self.rtt,
                 loss,
                 timestamp: now,

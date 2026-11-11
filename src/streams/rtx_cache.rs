@@ -10,10 +10,26 @@ use super::rtx_cache_buf::EvictingBuffer;
 const RTX_CACHE_SIZE_QUANTIZER: usize = 25;
 const RTX_CACHE_QUANTIZE_SLOTS: usize = DATAGRAM_MAX_PACKET_SIZE / RTX_CACHE_SIZE_QUANTIZER;
 
+/// Per-packet NACK bookkeeping kept next to each cached packet (see [`NackState`]).
+#[derive(Debug)]
+struct CachedPacket {
+    packet: RtpPacket,
+    nack: NackState,
+}
+
+/// How often a cached packet has been resent in answer to NACKs, and when.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct NackState {
+    /// Resends answered for this packet so far.
+    pub resends: u8,
+    /// When the packet was last resent (or first sent), for the minimum resend interval.
+    pub last_at: Instant,
+}
+
 #[derive(Debug)]
 pub(crate) struct RtxCache {
     // Data, new additions here probably need to be cleared in [`clear`].
-    packet_by_seq_no: EvictingBuffer<RtpPacket>,
+    packet_by_seq_no: EvictingBuffer<CachedPacket>,
 
     // Technically we want [Option<SeqNo>; X] to indicate the absence of
     // a SeqNo. However We can half the storage space by using the sentinel
@@ -33,7 +49,12 @@ impl RtxCache {
         assert!(packet.nackable);
         let seq_no = packet.seq_no;
         let quantized_size = packet.payload.len() / RTX_CACHE_SIZE_QUANTIZER;
-        self.packet_by_seq_no.push(*seq_no, now, packet);
+        let nack = NackState {
+            resends: 0,
+            last_at: now,
+        };
+        self.packet_by_seq_no
+            .push(*seq_no, now, CachedPacket { packet, nack });
         self.seq_no_by_quantized_size[quantized_size] = seq_no;
         self.remove_old_packets(now);
     }
@@ -43,7 +64,16 @@ impl RtxCache {
     }
 
     pub fn get_cached_packet_by_seq_no(&mut self, seq_no: SeqNo) -> Option<&mut RtpPacket> {
-        self.packet_by_seq_no.get_mut(*seq_no)
+        self.packet_by_seq_no
+            .get_mut(*seq_no)
+            .map(|c| &mut c.packet)
+    }
+
+    /// The NACK bookkeeping of a cached packet, with its payload size.
+    pub fn nack_state_mut(&mut self, seq_no: SeqNo) -> Option<(&mut NackState, usize)> {
+        self.packet_by_seq_no
+            .get_mut(*seq_no)
+            .map(|c| (&mut c.nack, c.packet.payload.len()))
     }
 
     pub fn get_cached_packet_smaller_than(&mut self, max_size: usize) -> Option<&mut RtpPacket> {
@@ -63,8 +93,8 @@ impl RtxCache {
     }
 
     pub(crate) fn last_packet(&self) -> Option<&[u8]> {
-        let packet = self.packet_by_seq_no.last()?;
-        Some(packet.payload.as_ref())
+        let cached = self.packet_by_seq_no.last()?;
+        Some(cached.packet.payload.as_ref())
     }
 
     pub(crate) fn clear(&mut self) {
