@@ -11,6 +11,11 @@ calls of the public API.
 This is deliberately not a standard `RTCPeerConnection` API since that isn't a great fit for Rust.
 See more details in below section.
 
+## About this fork
+
+This is a fork of [str0m](https://github.com/algesten/str0m): upstream str0m 0.25.0 plus Sew's
+patches, which are listed in [CHANGELOG.md](CHANGELOG.md) under "Unreleased".
+
 ## Join us
 
 We are discussing str0m things on Discord. Join us using this [invitation link][discord].

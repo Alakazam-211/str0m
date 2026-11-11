@@ -5,6 +5,15 @@
   * Add `StreamTx::set_nack_policy` to bound resends per packet (count, hold-off, queue size)
   * Let the application supply local ICE credentials on restarts: `SdpApi::ice_restart_with` and
     `SdpApi::set_restart_credentials` (for remote-initiated restarts in `accept_offer`)
+  * Resend in-band on the main SSRC when a packet's payload type has no RTX payload type
+  * Do not pad on a stream whose media stopped sending
+  * ice-lite: a controlled agent sends on the highest-priority pair among those nominated in
+    the last 3 s, else on the highest-priority nominated pair
+  * `DirectApi::reset_stream_tx` keeps the send stream under its new SSRC
+  * `MediaEgressStats` carries `packets_resent` and `bytes_resent`
+  * BWE: a probe cluster capped below the current estimate no longer lowers that estimate
+  * BWE: a delay-based decrease applies only when the link, not the sender, limits the
+    acknowledged packets
 
 # 0.25.0
 
