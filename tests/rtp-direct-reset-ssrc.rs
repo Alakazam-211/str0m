@@ -364,8 +364,8 @@ fn progress_for(l: &mut TestRtc, r: &mut TestRtc, d: Duration) -> Result<(), Rtc
 /// its new SSRC: incoming RTCP finds its send stream by the SSRC it names. After a reset the
 /// receiver's reports, a PLI and NACKs for the new SSRC reach the stream (the NACKs are
 /// answered on the new RTX SSRC), the old SSRC names nothing (a PLI for it is dropped), and no
-/// RTX SSRC keys the table. (Sew issue #7: a reused send slot renews its SSRC this way, and a
-/// subscriber's NACKs and PLIs for it were dropped.)
+/// RTX SSRC keys the table. (An application that reuses a send slot renews its SSRC this way;
+/// before, a subscriber's NACKs and PLIs for the renewed stream were dropped.)
 #[test]
 pub fn rtp_direct_reset_ssrc_rtcp_reaches_new_ssrc() -> Result<(), RtcError> {
     init_log();
