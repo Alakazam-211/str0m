@@ -17,6 +17,10 @@ This is a fork of [str0m](https://github.com/algesten/str0m), published as `sew-
 `sew-str0m-is`: upstream str0m 0.25.0 plus Sew's patches, which are listed in
 [CHANGELOG.md](https://github.com/Alakazam-211/str0m/blob/sew-crates-io-0.25/CHANGELOG.md) under 0.25.1.
 
+One API difference from upstream 0.25.0: `MediaEgressStats` has extra public fields
+(`packets_resent`, `bytes_resent`, `nacks_repeated`, `resends_dropped`), so code that
+builds it with a struct literal does not compile against this fork.
+
 ## Join us
 
 We are discussing str0m things on Discord. Join us using this [invitation link][discord].

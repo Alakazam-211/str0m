@@ -4,6 +4,7 @@
 
 sew-str0m 0.25.1 and sew-str0m-is 0.12.1: upstream str0m 0.25.0 (is 0.12.0) plus these patches.
 
+  * Includes str0m PR #980 by Jury Jaraševič
   * Support NACK retransmission without RTX, resending in-band on the main SSRC
   * Add `PayloadParams::set_resend` to configure or disable RTX
   * Add `StreamTx::set_nack_policy` to bound resends per packet (count, hold-off, queue size)
@@ -15,6 +16,9 @@ sew-str0m 0.25.1 and sew-str0m-is 0.12.1: upstream str0m 0.25.0 (is 0.12.0) plus
     the last 3 s, else on the highest-priority nominated pair
   * `DirectApi::reset_stream_tx` keeps the send stream under its new SSRC
   * `MediaEgressStats` carries `packets_resent` and `bytes_resent`
+  * `MediaEgressStats` has extra public fields compared with upstream 0.25.0
+    (`packets_resent`, `bytes_resent`, `nacks_repeated`, `resends_dropped`), so code that
+    builds it with a struct literal does not compile against this fork
   * BWE: a probe cluster capped below the current estimate no longer lowers that estimate
   * BWE: a delay-based decrease applies only when the link, not the sender, limits the
     acknowledged packets
