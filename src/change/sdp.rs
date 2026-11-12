@@ -67,6 +67,11 @@ impl<'a> SdpApi<'a> {
     /// This lets an application that generates its own ICE credentials (for example from a
     /// cryptographic RNG, or to keep them unique across many sessions) stay in control of them
     /// across restarts.
+    ///
+    /// The credentials must be fresh and random, from a cryptographically secure RNG, at the
+    /// sizes RFC 8445 §5.3 requires: at least 24 bits of randomness in the ufrag and at least
+    /// 128 bits in the password, written in ice-chars (RFC 8839 §5.4: a ufrag of 4 to 256
+    /// characters, a password of 22 to 256). [`IceCreds::new()`] generates such credentials.
     pub fn set_restart_credentials(&mut self, creds: IceCreds) {
         self.restart_creds = Some(creds);
     }
@@ -504,8 +509,11 @@ impl<'a> SdpApi<'a> {
     /// Perform an ICE restart with the given local ICE credentials.
     ///
     /// Like [`SdpApi::ice_restart()`], but the application supplies the new credentials instead
-    /// of having them generated. They must satisfy RFC 8445 §5.3 (unguessable, at least 24 bits
-    /// of randomness for the ufrag and 128 bits for the password).
+    /// of having them generated. They must be fresh and random, from a cryptographically secure
+    /// RNG, at the sizes RFC 8445 §5.3 requires: at least 24 bits of randomness in the ufrag and
+    /// at least 128 bits in the password, written in ice-chars (RFC 8839 §5.4: a ufrag of 4 to
+    /// 256 characters, a password of 22 to 256). Credentials must not be predictable or reused.
+    /// [`IceCreds::new()`] generates such credentials.
     ///
     /// Returns the credentials that will be used going forward.
     pub fn ice_restart_with(&mut self, creds: IceCreds, keep_local_candidates: bool) -> IceCreds {
