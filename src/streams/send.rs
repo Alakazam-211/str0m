@@ -512,7 +512,7 @@ impl StreamTx {
     /// i.e. if `tx_sum / (rtx_sum + tx_sum) > rtx_ratio_cap`. `None` disables this functionality
     /// so all queued resends will be sent.
     ///
-    /// The default is 1024 packets over 3 seconds and RTX cache drop ratio of 0.15.
+    /// The default is 2000 packets over 3 seconds and RTX cache drop ratio of 0.15.
     pub fn set_rtx_cache(
         &mut self,
         max_packets: usize,
