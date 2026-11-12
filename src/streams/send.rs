@@ -1719,8 +1719,10 @@ mod test {
         assert_eq!(nack(&mut stream, &[3], ms(800)), 0);
         assert_eq!(nack(&mut stream, &[3], ms(2000)), 0);
         // An explicit policy replaces the default.
-        let mut p = NackPolicy::default();
-        p.max_resends = 5;
+        let p = NackPolicy {
+            max_resends: 5,
+            ..NackPolicy::default()
+        };
         stream.set_nack_policy(Some(p));
         assert_eq!(nack(&mut stream, &[3], ms(2200)), 1);
     }
