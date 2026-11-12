@@ -185,17 +185,18 @@ pub struct StreamTx {
     mtu_warn: usize,
 }
 
-/// RTP packet data to enqueue on a direct RTP send stream.
-///
-/// The payload is the RTP payload only, without the RTP header.
-///
 /// Per-packet limits on answering incoming NACKs, set with [`StreamTx::set_nack_policy`].
 ///
 /// A NACKed packet is resent only if it has been resent fewer than `max_resends` times and
 /// more than `min(min_interval, rtt_factor × RTT)` has passed since its last resend (with
 /// `hold_after_send`, also since it was first sent). When the RTT is unknown, `min_interval`
 /// alone applies.
+///
+/// [`NackPolicy::default`] is 3 resends per packet, a 100 ms hold-off of at most 2 RTTs,
+/// held after the first send too, and at most 1000 queued resends. Build a policy with
+/// [`NackPolicy::new`], or start from the default and change its fields.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct NackPolicy {
     /// Upper bound of the hold-off between resends of one packet.
     pub min_interval: Duration,
@@ -209,6 +210,38 @@ pub struct NackPolicy {
     pub max_queued_resends: usize,
 }
 
+impl NackPolicy {
+    /// A policy with these limits (see the fields).
+    pub fn new(
+        min_interval: Duration,
+        rtt_factor: u32,
+        max_resends: u8,
+        hold_after_send: bool,
+        max_queued_resends: usize,
+    ) -> Self {
+        NackPolicy {
+            min_interval,
+            rtt_factor,
+            max_resends,
+            hold_after_send,
+            max_queued_resends,
+        }
+    }
+}
+
+impl Default for NackPolicy {
+    /// 3 resends per packet, a 100 ms hold-off of at most 2 RTTs (held after the first send
+    /// too), and at most 1000 queued resends. It also bounds in-band resends on a stream
+    /// without a policy (see [`StreamTx::set_nack_policy`]).
+    fn default() -> Self {
+        NackPolicy::new(Duration::from_millis(100), 2, 3, true, 1000)
+    }
+}
+
+/// RTP packet data to enqueue on a direct RTP send stream.
+///
+/// The payload is the RTP payload only, without the RTP header.
+///
 /// Optional RTP fields default to the common unmarked non-nackable packet with
 /// no header extension values, no CSRC entries and no VP8 rewrite.
 #[derive(Debug)]
@@ -504,18 +537,18 @@ impl StreamTx {
 
     /// Configure per-packet limits on answering incoming NACKs.
     ///
-    /// Without a policy (the default) every NACK for a packet still in the RTX cache queues a
-    /// resend, so a receiver repeating a NACK gets the packet again each time, and the queue
-    /// of resends is only bounded by the `rtx_ratio_cap` (see [`StreamTx::set_rtx_cache`]).
+    /// Without a policy (the default) every NACK for a packet still in the RTX cache queues an
+    /// RTX resend, so a receiver repeating a NACK gets the packet again each time, and the
+    /// queue of resends is only bounded by the `rtx_ratio_cap` (see
+    /// [`StreamTx::set_rtx_cache`]). Resends without RTX (in-band on the main SSRC) are
+    /// bounded by [`NackPolicy::default`] even without a policy.
     ///
     /// With a policy, a NACKed packet is resent at most [`NackPolicy::max_resends`] times, and
     /// not again within `min(min_interval, rtt_factor × RTT)` of its last resend (or of its
     /// first send, with [`NackPolicy::hold_after_send`]). At most
     /// [`NackPolicy::max_queued_resends`] resends wait in the queue; the rest are dropped and
-    /// counted in [`MediaEgressStats::resends_dropped`][crate::stats::MediaEgressStats].
-    ///
-    /// Setting a policy also bounds resends without RTX (in-band on the main SSRC), which
-    /// otherwise would let a peer force unlimited repeats of the same packet.
+    /// counted in [`MediaEgressStats::resends_dropped`][crate::stats::MediaEgressStats]. The
+    /// policy applies to RTX and in-band resends alike.
     pub fn set_nack_policy(&mut self, policy: Option<NackPolicy>) {
         self.nack_policy = policy;
     }
@@ -1175,14 +1208,15 @@ impl StreamTx {
         let seq_no = self.rtx_cache.last_cached_seq_no()?;
         let iter = entries.flat_map(|n| n.into_iter(seq_no));
 
-        let policy = self.nack_policy;
-        let hold = policy.map(|p| {
-            let by_rtt = self.stats.rtt().map(|rtt| rtt * p.rtt_factor);
+        let rtt = self.stats.rtt();
+        let hold_of = |p: &NackPolicy| {
+            let by_rtt = rtt.map(|rtt| rtt * p.rtt_factor);
             match by_rtt {
                 Some(r) => r.min(p.min_interval),
                 None => p.min_interval,
             }
-        });
+        };
+        let no_rtx = self.rtx.is_none();
 
         // Schedule all resends. They will be handled on next poll_packet
         for seq_no in iter {
@@ -1191,7 +1225,13 @@ impl StreamTx {
                 continue;
             };
 
-            if let (Some(p), Some(hold)) = (policy, hold) {
+            // Without a policy, a resend in-band (no RTX) still gets the default limits.
+            let policy = self
+                .nack_policy
+                .or_else(|| (no_rtx || state.in_band).then(NackPolicy::default));
+
+            if let Some(p) = policy {
+                let hold = hold_of(&p);
                 if state.resends >= p.max_resends {
                     continue;
                 }
@@ -1574,13 +1614,7 @@ mod test {
     }
 
     fn bounded_policy() -> NackPolicy {
-        NackPolicy {
-            min_interval: Duration::from_millis(100),
-            rtt_factor: 2,
-            max_resends: 3,
-            hold_after_send: true,
-            max_queued_resends: 1000,
-        }
+        NackPolicy::new(Duration::from_millis(100), 2, 3, true, 1000)
     }
 
     #[test]
@@ -1619,9 +1653,11 @@ mod test {
                 .get_cached_packet_smaller_than(1000)
                 .is_none()
         );
+        // After the default hold-off that bounds in-band resends.
+        let later = now + Duration::from_millis(200);
         let entries = vec![NackEntry { pid: 7, blp: 0 }];
-        stream.handle_nack(entries.into_iter(), now);
-        let next = stream.poll_packet_resend(now).expect("a resend");
+        stream.handle_nack(entries.into_iter(), later);
+        let next = stream.poll_packet_resend(later).expect("a resend");
         assert!(matches!(next.kind, NextPacketKind::ResendInband));
         assert_eq!(*next.seq_no, 7);
     }
@@ -1641,9 +1677,52 @@ mod test {
             nackable: true,
         };
         stream.rtx_cache.cache_sent_packet(pkt, now, false);
+        let later = now + Duration::from_millis(200);
         let entries = vec![NackEntry { pid: 7, blp: 0 }];
-        stream.handle_nack(entries.into_iter(), now);
-        assert!(stream.poll_packet_resend(now).is_none());
+        stream.handle_nack(entries.into_iter(), later);
+        assert_eq!(stream.resends.len(), 1, "the NACK is accepted");
+        assert!(stream.poll_packet_resend(later).is_none());
+    }
+
+    #[test]
+    fn in_band_resends_without_a_policy_get_the_default_bound() {
+        let now = Instant::now();
+        let ms = |n: u64| now + Duration::from_millis(n);
+        let mut stream = StreamTx::new(42.into(), None, MidRid(Mid::from("0"), None), false, 1200);
+        for seq in 1..=4_u64 {
+            let pkt = RtpPacket {
+                header: RtpHeader::default(),
+                seq_no: seq.into(),
+                time: MediaTime::from_90khz(seq * 3000),
+                payload: vec![seq as u8; 100].into(),
+                vp8_patch: None,
+                timestamp: now,
+                last_sender_info: None,
+                nackable: true,
+            };
+            stream.rtx_cache.cache_sent_packet(pkt, now, false);
+        }
+        assert_eq!(stream.nack_policy, None);
+        let d = NackPolicy::default();
+        assert_eq!(
+            d,
+            NackPolicy::new(Duration::from_millis(100), 2, 3, true, 1000)
+        );
+
+        // Within 100 ms of the send: held.
+        assert_eq!(nack(&mut stream, &[3], ms(50)), 0);
+        assert_eq!(nack(&mut stream, &[3], ms(200)), 1);
+        assert_eq!(nack(&mut stream, &[3], ms(250)), 0);
+        assert_eq!(nack(&mut stream, &[3], ms(400)), 1);
+        assert_eq!(nack(&mut stream, &[3], ms(600)), 1);
+        // 3 resends per packet: never again.
+        assert_eq!(nack(&mut stream, &[3], ms(800)), 0);
+        assert_eq!(nack(&mut stream, &[3], ms(2000)), 0);
+        // An explicit policy replaces the default.
+        let mut p = NackPolicy::default();
+        p.max_resends = 5;
+        stream.set_nack_policy(Some(p));
+        assert_eq!(nack(&mut stream, &[3], ms(2200)), 1);
     }
 
     #[test]
