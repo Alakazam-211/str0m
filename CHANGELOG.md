@@ -39,6 +39,9 @@ Changes:
     cap counts as capped too, so low periodic probes do not lower the estimate)
   * BWE: a delay-based decrease applies only when the link, not the sender, limits the
     acknowledged packets (str0m issue #1127)
+  * TWCC: a packet already reported lost is not counted lost again when a later feedback
+    report repeats it (a report that restarts from an earlier sequence number, after a late
+    packet)
 
 # 0.25.0
 
