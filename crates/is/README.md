@@ -1,10 +1,51 @@
+# sew-str0m-is
+
+**sew-str0m-is is a fork of `is`, the ICE crate of [str0m](https://github.com/algesten/str0m).**
+Alakazam Labs publishes it for Sew, Alakazam Labs' chat and voice core, together with
+[sew-str0m][sew-str0m], its fork of str0m: upstream is 0.12.0 plus the patches listed below.
+API documentation: [docs.rs/sew-str0m-is][docs].
+
+## Using this fork
+
+```toml
+[dependencies]
+is = { package = "sew-str0m-is", version = "0.12.1" }
+```
+
+Most users get it through sew-str0m (`str0m = { package = "sew-str0m", version = "0.25.1" }`).
+
+- The library names stay upstream's: `is` for this crate and `str0m` for [sew-str0m][sew-str0m],
+  so code says `use is::…` and `use str0m::…`.
+- It replaces upstream `is` in a build. It is a different crate to Cargo, so its types do not mix
+  with upstream `is`'s (or upstream str0m's): a build that also depends on upstream `is` gets two
+  separate copies whose types cannot be passed to each other.
+- `str0m-proto` and the `str0m-*` backend crates are upstream's crates from crates.io, and work
+  with it.
+
+## Patches on upstream is 0.12.0
+
+- ice-lite: a controlled agent sends on the highest-priority pair among those nominated in the
+  last 3 s, else on the highest-priority nominated pair.
+
+`CHANGELOG.md`, in this package, lists the changes by version.
+
+## Security
+
+Report security problems in this fork privately, through
+[GitHub private vulnerability reporting][report] on its repository, as `SECURITY.md` in the
+[repository][repo] root describes. Do not open a public issue. Bugs in upstream str0m or `is`
+go to the [upstream issue tracker](https://github.com/algesten/str0m/issues).
+
+---
+
+*The rest of this README is upstream's text for `is`.*
+
+[sew-str0m]: https://crates.io/crates/sew-str0m
+[docs]: https://docs.rs/sew-str0m-is
+[repo]: https://github.com/Alakazam-211/str0m
+[report]: https://github.com/Alakazam-211/str0m/security/advisories/new
+
 # is
-
-## About this fork
-
-This is a fork of [str0m](https://github.com/algesten/str0m), published as `sew-str0m` and
-`sew-str0m-is`: upstream str0m 0.25.0 plus Sew's patches, which are listed in
-[CHANGELOG.md](https://github.com/Alakazam-211/str0m/blob/sew-crates-io-0.25/CHANGELOG.md) under 0.25.1.
 
 ## is -- ICE in Sans-IO style
 
@@ -60,8 +101,8 @@ Discovered addresses are fed in via `add_local_candidate()` at any time
 ## Relationship to str0m
 
 This crate was extracted from [str0m][str0m] so the ICE agent can be
-reused outside the full WebRTC stack. str0m depends on this crate with
-default features disabled (it supplies its own HMAC provider through its
+reused outside the full WebRTC stack. [sew-str0m][sew-str0m] (this fork's
+str0m) depends on this crate with default features disabled (it supplies its own HMAC provider through its
 pluggable crypto backend).
 
 When used standalone the default `sha1` feature provides

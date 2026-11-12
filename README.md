@@ -1,3 +1,82 @@
+# sew-str0m
+
+**sew-str0m is a fork of [str0m](https://github.com/algesten/str0m)**, the Sans I/O WebRTC
+library. Alakazam Labs publishes it for Sew, Alakazam Labs' chat and voice core: upstream str0m
+0.25.0 plus the patches listed below. API documentation: [docs.rs/sew-str0m][docs].
+
+## Using this fork
+
+```toml
+[dependencies]
+str0m = { package = "sew-str0m", version = "0.25.1" }
+```
+
+- The library names stay upstream's: `str0m` for this crate and `is` for its ICE crate
+  ([sew-str0m-is][is]), so code says `use str0m::…` and `use is::…`.
+- It replaces upstream str0m in a build. It is a different crate to Cargo, so its types do not
+  mix with upstream str0m's: a build that also depends on upstream `str0m` gets two separate
+  copies whose types cannot be passed to each other.
+- The `str0m-*` backend crates (`str0m-aws-lc-rs`, `str0m-rust-crypto`, `str0m-openssl`,
+  `str0m-wincrypto`, `str0m-apple-crypto`) and `str0m-proto` are upstream's crates from
+  crates.io, and work with it.
+
+## Patches on upstream str0m 0.25.0
+
+- NACK retransmission without RTX: a NACKed packet whose payload type has no RTX payload type
+  is resent in-band on the main SSRC with its original sequence number. This is
+  [str0m PR #980][pr980] by Jury Jaraševič, an open upstream str0m PR, plus fixes for streams that
+  mix payload types with and without RTX and for RED packets. `PayloadParams::set_resend`
+  configures or disables RTX.
+- `StreamTx::set_nack_policy` and `NackPolicy`: per-packet limits on answering NACKs (resends per
+  packet, hold-off, queue size), with `NackPolicy::default()` and `NackPolicy::new()`.
+- Application-supplied ICE credentials on restarts: `SdpApi::ice_restart_with` and
+  `SdpApi::set_restart_credentials`.
+- No padding on a stream whose media stopped sending.
+- ice-lite: a controlled agent sends on the highest-priority pair among those nominated in the
+  last 3 s, else on the highest-priority nominated pair.
+- `DirectApi::reset_stream_tx` keeps the send stream under its new SSRC.
+- `MediaEgressStats` carries `packets_resent`, `bytes_resent`, `nacks_repeated` and
+  `resends_dropped`. Code that builds `MediaEgressStats` with a struct literal does not compile
+  against this fork.
+- BWE: a probe cluster capped below the current estimate no longer lowers that estimate
+  ([str0m PR #1126][pr1126], an open upstream PR, with its follow-up commits), and a
+  delay-based decrease applies only when the link, not the sender, limits the acknowledged
+  packets ([str0m issue #1127][i1127]).
+
+`CHANGELOG.md`, in this package and the repository, lists the same changes under 0.25.1.
+
+## Defaults that differ from upstream
+
+These change behaviour for every user of the crate, not only for code that calls the new APIs:
+
+- **Receive-side NACK follows the negotiated `nack` feedback.** A receive stream sends NACKs
+  when `a=rtcp-fb:<pt> nack` is negotiated for its payload type, whether or not RTX is
+  negotiated. Upstream sends NACKs only when RTX is negotiated.
+- **`fb_nack` is intersected with the remote's.** A payload type's `fb_nack` is on only when
+  both the local config and the remote description have `nack` for it.
+- **Resends without RTX are bounded by default.** When a stream has no `NackPolicy`, resends
+  in-band on the main SSRC follow `NackPolicy::default()`: at most 3 resends per packet, at
+  most one per 100 ms (or 2 round trips, if shorter), none within that hold-off of the first
+  send, and at most 1000 queued. Resends over RTX are unbounded without a policy, as upstream.
+
+## Security
+
+Report security problems in this fork privately, through
+[GitHub private vulnerability reporting][report] on this repository, as `SECURITY.md` (in this
+package and the repository root) describes. Do not open a public issue. Bugs in upstream str0m
+itself go to the [upstream issue tracker](https://github.com/algesten/str0m/issues).
+
+---
+
+*The rest of this README is upstream str0m's text.*
+
+[docs]: https://docs.rs/sew-str0m
+[is]: https://crates.io/crates/sew-str0m-is
+[pr980]: https://github.com/algesten/str0m/pull/980
+[pr1126]: https://github.com/algesten/str0m/pull/1126
+[i1127]: https://github.com/algesten/str0m/issues/1127
+[report]: https://github.com/Alakazam-211/str0m/security/advisories/new
+
 # str0m
 
 <image src="https://user-images.githubusercontent.com/227204/226143511-66fe5264-6ab7-47b9-9551-90ba7e155b96.svg" alt="str0m logo" ></image>
@@ -10,16 +89,6 @@ calls of the public API.
 
 This is deliberately not a standard `RTCPeerConnection` API since that isn't a great fit for Rust.
 See more details in below section.
-
-## About this fork
-
-This is a fork of [str0m](https://github.com/algesten/str0m), published as `sew-str0m` and
-`sew-str0m-is`: upstream str0m 0.25.0 plus Sew's patches, which are listed in
-[CHANGELOG.md](https://github.com/Alakazam-211/str0m/blob/sew-crates-io-0.25/CHANGELOG.md) under 0.25.1.
-
-One API difference from upstream 0.25.0: `MediaEgressStats` has extra public fields
-(`packets_resent`, `bytes_resent`, `nacks_repeated`, `resends_dropped`), so code that
-builds it with a struct literal does not compile against this fork.
 
 ## Join us
 

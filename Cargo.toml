@@ -6,6 +6,7 @@ description = "Fork of str0m (https://github.com/algesten/str0m) with Sew's patc
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/Alakazam-211/str0m"
 homepage = "https://github.com/Alakazam-211/str0m"
+documentation = "https://docs.rs/sew-str0m"
 readme = "README.md"
 keywords = ["webrtc", "streaming", "video", "audio", "media"]
 categories = ["web-programming", "multimedia", "network-programming"]

@@ -3,25 +3,42 @@
 # 0.25.1
 
 sew-str0m 0.25.1 and sew-str0m-is 0.12.1: upstream str0m 0.25.0 (is 0.12.0) plus these patches.
+sew-str0m-is has its own crates/is/CHANGELOG.md.
 
-  * Includes str0m PR #980 by Jury Jaraševič
+Defaults that change behaviour for every user:
+
+  * Receive-side NACK follows the negotiated `nack` feedback: a receive stream sends NACKs when
+    `a=rtcp-fb:<pt> nack` is negotiated, whether or not RTX is (upstream: only with RTX)
+  * A payload type's `fb_nack` is intersected with the remote's: it is on only when both the
+    local config and the remote description have `nack` for it
+  * Resends without RTX (in-band on the main SSRC) follow `NackPolicy::default()` when a stream
+    has no `NackPolicy`: at most 3 resends per packet, at most one per 100 ms (or 2 round trips,
+    if shorter), none within that hold-off of the first send, at most 1000 queued
+
+Changes:
+
+  * Includes str0m PR #980 by Jury Jaraševič, an open upstream str0m PR
   * Support NACK retransmission without RTX, resending in-band on the main SSRC
   * Add `PayloadParams::set_resend` to configure or disable RTX
-  * Add `StreamTx::set_nack_policy` to bound resends per packet (count, hold-off, queue size)
+  * Add `StreamTx::set_nack_policy` to bound resends per packet (count, hold-off, queue size);
+    `NackPolicy` is `#[non_exhaustive]`, with `NackPolicy::default()` and `NackPolicy::new()`
   * Let the application supply local ICE credentials on restarts: `SdpApi::ice_restart_with` and
-    `SdpApi::set_restart_credentials` (for remote-initiated restarts in `accept_offer`)
+    `SdpApi::set_restart_credentials` (for remote-initiated restarts in `accept_offer`); the
+    credentials must be random, at RFC 8445 sizes
   * Resend in-band on the main SSRC when a packet's payload type has no RTX payload type
   * Do not pad on a stream whose media stopped sending
-  * ice-lite: a controlled agent sends on the highest-priority pair among those nominated in
-    the last 3 s, else on the highest-priority nominated pair
+  * ice-lite: a controlled agent sends on the highest-priority pair among those nominated in the
+    last 3 s, else on the highest-priority nominated pair
   * `DirectApi::reset_stream_tx` keeps the send stream under its new SSRC
   * `MediaEgressStats` carries `packets_resent` and `bytes_resent`
   * `MediaEgressStats` has extra public fields compared with upstream 0.25.0
     (`packets_resent`, `bytes_resent`, `nacks_repeated`, `resends_dropped`), so code that
     builds it with a struct literal does not compile against this fork
   * BWE: a probe cluster capped below the current estimate no longer lowers that estimate
+    (str0m PR #1126, an open upstream PR, with its follow-up: a probe whose target equals the
+    cap counts as capped too, so low periodic probes do not lower the estimate)
   * BWE: a delay-based decrease applies only when the link, not the sender, limits the
-    acknowledged packets
+    acknowledged packets (str0m issue #1127)
 
 # 0.25.0
 
