@@ -1,3 +1,4 @@
+<!-- Changed by Alakazam Labs for sew-str0m-is; the fork's patches are listed in its README. -->
 # sew-str0m-is
 
 **sew-str0m-is is a fork of `is`, the ICE crate of [str0m](https://github.com/algesten/str0m).**

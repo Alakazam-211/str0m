@@ -1,3 +1,4 @@
+// Changed by Alakazam Labs for sew-str0m; the fork's patches are listed in its README.
 use std::collections::VecDeque;
 use std::sync::Arc;
 use std::time::Duration;

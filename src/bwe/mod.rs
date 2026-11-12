@@ -1,3 +1,4 @@
+// Changed by Alakazam Labs for sew-str0m; the fork's patches are listed in its README.
 //! Google Congestion Control (GoogCC) Bandwidth Estimation based on TWCC feedback.
 //!
 //! This implementation is ported from libWebRTC's GoogCC and goes beyond the simplified

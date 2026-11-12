@@ -1,3 +1,4 @@
+// Changed by Alakazam Labs for sew-str0m-is; the fork's patches are listed in its README.
 //! **This is sew-str0m-is, a fork of `is`, the ICE crate of
 //! [str0m](https://github.com/algesten/str0m)**, that Alakazam Labs publishes with sew-str0m for
 //! Sew, Alakazam Labs' chat and voice core. Depend on it as
