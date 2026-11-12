@@ -27,7 +27,7 @@ use crate::util::value_history::ValueHistory;
 use crate::util::{InstantExt, already_happened, not_happening};
 
 use super::RtpPacket;
-use super::rtx_cache::RtxCache;
+use super::rtx_cache::{RtxCache, SentWire};
 use super::send_queue::SendQueue;
 use super::send_stats::StreamTxStats;
 
@@ -573,6 +573,11 @@ impl StreamTx {
             (next, true)
         };
 
+        if next.kind == NextPacketKind::ResendInband {
+            let seq_no = next.seq_no;
+            return self.poll_packet_resend_inband(now, seq_no, buf);
+        }
+
         let pop_send_queue = next.kind == NextPacketKind::Regular;
 
         // Need the header for the receipt and modifications
@@ -665,15 +670,12 @@ impl StreamTx {
                 header
             }
             NextPacketKind::ResendInband => {
-                // In-band resend on the main SSRC: reuse the original PT and sequence
-                // number so SRTP reproduces the original ROC/IV and the encrypted
-                // payload decrypts at the receiver.
-                header_ref.ext_vals.rid_repair = None;
-                header_ref.clone()
+                unreachable!("in-band resends are sent by poll_packet_resend_inband")
             }
             NextPacketKind::Resend(_) | NextPacketKind::Blank(_) => {
-                // * For the Resend case, we will not have accepted/cached the packet unless
-                //   we have a RTX PT (see logic setting next.pkt.nackable above).
+                // * For the Resend case, a packet is only resent over RTX when its PT has an
+                //   RTX PT and the stream has an RTX SSRC; every other cached packet (no RTX
+                //   PT, or no RTX SSRC) is resent in-band instead (see poll_packet_resend).
                 // * For the Blank case, we will only have produced blank packets if we
                 //   got a "real" PTX RT, either via set_pt_for_padding above, or via
                 //   the on_first_timeout() further down.
@@ -808,7 +810,14 @@ impl StreamTx {
                 .pop(now)
                 .expect("head of send_queue to be there");
             if pkt.nackable {
-                self.rtx_cache.cache_sent_packet(pkt, now, in_band_only);
+                // A packet that may be resent in-band (no RTX PT, or no RTX SSRC) keeps the
+                // exact bytes it was sent with: an in-band resend repeats them verbatim.
+                let wire = (in_band_only || ssrc_rtx.is_none()).then(|| SentWire {
+                    bytes: buf[..].into(),
+                    header: header.clone(),
+                });
+                self.rtx_cache
+                    .cache_sent_packet_with_wire(pkt, now, in_band_only, wire);
             }
         }
 
@@ -817,6 +826,34 @@ impl StreamTx {
             seq_no,
             is_padding,
             payload_size: body_len,
+            verbatim_resend: false,
+        })
+    }
+
+    /// Sends an in-band resend: the original packet's bytes, unchanged, header extensions
+    /// included.
+    fn poll_packet_resend_inband(
+        &mut self,
+        now: Instant,
+        seq_no: SeqNo,
+        buf: &mut Vec<u8>,
+    ) -> Option<PacketReceipt> {
+        // poll_packet_resend only hands out in-band resends whose bytes were kept.
+        let wire = self.rtx_cache.sent_wire(seq_no)?;
+
+        buf.clear();
+        buf.extend_from_slice(&wire.bytes);
+        let header = wire.header.clone();
+        let payload_size = wire.bytes.len() - header.header_len;
+
+        self.last_used = now;
+
+        Some(PacketReceipt {
+            header,
+            seq_no,
+            is_padding: false,
+            payload_size,
+            verbatim_resend: true,
         })
     }
 
@@ -867,7 +904,7 @@ impl StreamTx {
             }
         }
 
-        let seq_no = loop {
+        let (seq_no, in_band) = loop {
             let resend = self.resends.pop_front()?;
 
             let pkt = self.rtx_cache.get_cached_packet_by_seq_no(resend.seq_no);
@@ -882,14 +919,23 @@ impl StreamTx {
             // entry to the self.rtx_cache.
             assert!(pkt.nackable);
 
-            break pkt.seq_no;
-        };
+            let seq_no = pkt.seq_no;
 
-        // A packet whose PT has no RTX PT goes in-band even when the stream has an RTX SSRC.
-        let in_band = self
-            .rtx_cache
-            .nack_state_mut(seq_no)
-            .is_some_and(|(s, _)| s.in_band);
+            // A packet whose PT has no RTX PT goes in-band even when the stream has an RTX SSRC.
+            let in_band = self.rtx.is_none()
+                || self
+                    .rtx_cache
+                    .nack_state_mut(seq_no)
+                    .is_some_and(|(s, _)| s.in_band);
+
+            // An in-band resend repeats the original bytes exactly. Without them, the packet
+            // is not resent.
+            if in_band && self.rtx_cache.sent_wire(seq_no).is_none() {
+                continue;
+            }
+
+            break (seq_no, in_band);
+        };
 
         // Borrow checker gymnastics.
         let pkt = self.rtx_cache.get_cached_packet_by_seq_no(seq_no).unwrap();
@@ -900,7 +946,7 @@ impl StreamTx {
             h.push(now, len);
         }
 
-        if self.rtx.is_none() || in_band {
+        if in_band {
             let seq_no = pkt.seq_no;
             return Some(NextPacket {
                 kind: NextPacketKind::ResendInband,
@@ -1503,7 +1549,16 @@ mod test {
             last_sender_info: None,
             nackable: true,
         };
-        stream.rtx_cache.cache_sent_packet(pkt, now, true);
+        let wire = SentWire {
+            bytes: vec![7; 212].into(),
+            header: RtpHeader {
+                header_len: 12,
+                ..RtpHeader::default()
+            },
+        };
+        stream
+            .rtx_cache
+            .cache_sent_packet_with_wire(pkt, now, true, Some(wire));
         assert!(
             stream
                 .rtx_cache
@@ -1515,6 +1570,26 @@ mod test {
         let next = stream.poll_packet_resend(now).expect("a resend");
         assert!(matches!(next.kind, NextPacketKind::ResendInband));
         assert_eq!(*next.seq_no, 7);
+    }
+
+    #[test]
+    fn in_band_packet_without_its_sent_bytes_is_not_resent() {
+        let now = Instant::now();
+        let mut stream = StreamTx::new(42.into(), None, MidRid(Mid::from("0"), None), false, 1200);
+        let pkt = RtpPacket {
+            header: RtpHeader::default(),
+            seq_no: 7.into(),
+            time: MediaTime::from_90khz(0),
+            payload: vec![7; 200].into(),
+            vp8_patch: None,
+            timestamp: now,
+            last_sender_info: None,
+            nackable: true,
+        };
+        stream.rtx_cache.cache_sent_packet(pkt, now, false);
+        let entries = vec![NackEntry { pid: 7, blp: 0 }];
+        stream.handle_nack(entries.into_iter(), now);
+        assert!(stream.poll_packet_resend(now).is_none());
     }
 
     #[test]

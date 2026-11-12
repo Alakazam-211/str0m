@@ -1176,6 +1176,7 @@ impl Session {
             seq_no,
             is_padding,
             payload_size,
+            verbatim_resend,
         } = receipt;
 
         trace!(payload_size, is_padding, "Poll RTP: {:?}", header);
@@ -1195,7 +1196,9 @@ impl Session {
 
         let protected = srtp_tx.protect_rtp(buf, &header, *seq_no);
 
-        if twcc_enabled {
+        // A verbatim resend carries its original transport-wide sequence number, already
+        // registered when it was first sent; it consumed no new one.
+        if twcc_enabled && !verbatim_resend {
             let packet_id = if let Some(cluster) = cluster_id {
                 TwccPacketId::with_cluster(twcc_seq, cluster)
             } else {
@@ -1471,6 +1474,9 @@ pub struct PacketReceipt {
     pub seq_no: SeqNo,
     pub is_padding: bool,
     pub payload_size: usize,
+    /// The packet repeats an earlier transmission byte for byte (an in-band resend). It
+    /// carries that transmission's transport-wide sequence number, so it takes no new one.
+    pub verbatim_resend: bool,
 }
 
 /// Find the PayloadParams for the given Pt, either when the Pt is the main Pt for the Codec or
@@ -1552,5 +1558,116 @@ mod tests {
             un_red(&mut header, &data, expected_primary_pt).is_none(),
             "RED associated with Opus must not reinterpret a PCMU primary block as Opus"
         );
+    }
+
+    /// Every RTP datagram on `ssrc` that `session` sends at `now`, with its header.
+    fn sent_rtp(session: &mut Session, now: Instant, ssrc: Ssrc) -> Vec<(RtpHeader, Vec<u8>)> {
+        session.handle_timeout(now).unwrap();
+        let exts = ExtensionMap::standard();
+        let mut out = Vec::new();
+        while let Some(d) = session.poll_datagram(now) {
+            let d = d.to_vec();
+            if (192..=223).contains(&d[1]) {
+                continue; // RTCP
+            }
+            let header = RtpHeader::parse(&d, &exts).expect("an RTP header");
+            if header.ssrc == ssrc {
+                out.push((header, d));
+            }
+        }
+        out
+    }
+
+    /// A packet resent on its original SSRC and sequence number (no RTX) leaves as the original
+    /// protected packet, byte for byte, and takes no new transport-wide sequence number.
+    #[test]
+    fn inband_resend_is_the_original_protected_packet() {
+        for profile in [
+            SrtpProfile::AES128_CM_SHA1_80,
+            SrtpProfile::AEAD_AES_128_GCM,
+            SrtpProfile::AEAD_AES_256_GCM,
+        ] {
+            let mut session = Session::new(&RtcConfig::default());
+            let crypto = crate::crypto::test_default_provider();
+            let mat = KeyingMaterial::new(&vec![7; profile.keying_material_len()]);
+            session.set_keying_material(mat, crypto, profile, true);
+
+            let mid: Mid = "vid".into();
+            let ssrc: Ssrc = 42.into();
+            session.add_media(Media::from_direct_api(
+                mid,
+                0,
+                crate::media::MediaKind::Video,
+                ExtensionMap::standard(),
+            ));
+            session
+                .streams
+                .declare_stream_tx(ssrc, None, MidRid(mid, None));
+            let vp8 = session
+                .codec_config
+                .params()
+                .iter()
+                .find(|p| p.spec().codec == crate::format::Codec::Vp8)
+                .expect("VP8 in the default codecs");
+            assert!(vp8.fb_nack());
+            let pt = vp8.pt();
+
+            let start = Instant::now();
+            let mut now = start;
+            let mut first = Vec::new();
+            for i in 0..3_u64 {
+                now = start + Duration::from_millis(20 * i);
+                let stream = session.streams.stream_tx(&ssrc).unwrap();
+                stream.write_rtp(
+                    crate::streams::RtpWrite::new(
+                        pt,
+                        (100 + i).into(),
+                        (i * 1800) as u32,
+                        now,
+                        vec![i as u8; 120],
+                    )
+                    .nackable(true),
+                );
+                first.extend(sent_rtp(&mut session, now, ssrc));
+            }
+            assert_eq!(first.len(), 3, "{profile}: three packets sent");
+            for (h, _) in &first {
+                assert!(
+                    h.ext_vals.abs_send_time.is_some(),
+                    "{profile}: abs-send-time"
+                );
+                assert!(h.ext_vals.transport_cc.is_some(), "{profile}: transport-cc");
+            }
+
+            // NACK the second packet, later.
+            now += Duration::from_millis(150);
+            let stream = session.streams.stream_tx(&ssrc).unwrap();
+            stream.handle_nack(
+                [crate::rtp_::NackEntry { pid: 101, blp: 0 }].into_iter(),
+                now,
+            );
+            let resent = sent_rtp(&mut session, now, ssrc);
+            assert_eq!(resent.len(), 1, "{profile}: one in-band resend");
+            assert_eq!(resent[0].0.sequence_number, 101);
+            assert_eq!(
+                resent[0].1, first[1].1,
+                "{profile}: the resend is the original protected packet, byte for byte"
+            );
+
+            // The next new packet continues the transport-wide sequence without a gap.
+            now += Duration::from_millis(20);
+            let stream = session.streams.stream_tx(&ssrc).unwrap();
+            stream.write_rtp(
+                crate::streams::RtpWrite::new(pt, 103.into(), 5400, now, vec![3; 120])
+                    .nackable(true),
+            );
+            let next = sent_rtp(&mut session, now, ssrc);
+            assert_eq!(next.len(), 1, "{profile}: the next packet is sent");
+            assert_eq!(
+                next[0].0.ext_vals.transport_cc,
+                first[2].0.ext_vals.transport_cc.map(|t| t.wrapping_add(1)),
+                "{profile}: the resend took no transport-wide sequence number"
+            );
+        }
     }
 }

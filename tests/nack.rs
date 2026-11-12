@@ -6,9 +6,10 @@ use netem::{NetemConfig, Probability, RandomLoss};
 use str0m::format::Codec;
 use str0m::media::Pt;
 use str0m::media::{Direction, MediaKind};
+use str0m::net::Receive;
 use str0m::rtp::rtcp::Rtcp;
 use str0m::rtp::{ExtensionValues, RawPacket, RtpWrite, SeqNo, Ssrc};
-use str0m::{Rtc, RtcError};
+use str0m::{Input, Output, Rtc, RtcError};
 
 mod common;
 use common::{Peer, TestRtc, connect_l_r, connect_l_r_with_rtc};
@@ -742,6 +743,157 @@ pub fn inband_resend_bounded_by_nack_policy() -> Result<(), RtcError> {
             max_resends
         );
     }
+
+    Ok(())
+}
+
+/// The SSRC and sequence number of an RTP datagram (SRTP leaves the header in the clear);
+/// `None` for RTCP and anything else.
+fn rtp_ssrc_seq(datagram: &[u8]) -> Option<(u32, u16)> {
+    if datagram.len() < 12 || datagram[0] >> 6 != 2 {
+        return None;
+    }
+    // RTCP packet types 192..=223 share the second byte with RTP's marker and PT.
+    if (192..=223).contains(&datagram[1]) {
+        return None;
+    }
+    let seq = u16::from_be_bytes([datagram[2], datagram[3]]);
+    let ssrc = u32::from_be_bytes([datagram[8], datagram[9], datagram[10], datagram[11]]);
+    Some((ssrc, seq))
+}
+
+/// Polls `rtc` to its next timeout, collecting every transmitted datagram.
+fn drain_transmits(rtc: &mut TestRtc) -> Result<VecDeque<Vec<u8>>, RtcError> {
+    let mut out = VecDeque::new();
+    loop {
+        match rtc.span.in_scope(|| rtc.rtc.poll_output())? {
+            Output::Timeout(_) => return Ok(out),
+            Output::Transmit(t) => out.push_back(t.contents.to_vec()),
+            Output::Event(e) => rtc.events.push((rtc.last, e)),
+        }
+    }
+}
+
+/// Hands one datagram to `rtc` and returns what it transmits in answer.
+fn receive_datagram(
+    rtc: &mut TestRtc,
+    now: Instant,
+    source: std::net::SocketAddr,
+    destination: std::net::SocketAddr,
+    datagram: &[u8],
+) -> Result<VecDeque<Vec<u8>>, RtcError> {
+    let input = Input::Receive(
+        now,
+        Receive {
+            proto: str0m::net::Protocol::Udp,
+            source,
+            destination,
+            contents: datagram.try_into()?,
+        },
+    );
+    rtc.span.in_scope(|| rtc.rtc.handle_input(input))?;
+    drain_transmits(rtc)
+}
+
+/// A resend on the original SSRC and sequence number is, on the wire, the original protected
+/// packet, byte for byte.
+#[test]
+pub fn inband_resend_wire_bytes_repeat_original() -> Result<(), RtcError> {
+    use std::collections::HashMap;
+
+    init_log();
+    init_crypto_default();
+
+    let (mut l, mut r) = connect_l_r();
+
+    let mid = "vid".into();
+    let ssrc_tx: Ssrc = 42.into();
+
+    // No RTX SSRC: resends go in-band on the main SSRC.
+    l.direct_api().declare_media(mid, MediaKind::Video);
+    l.direct_api().declare_stream_tx(ssrc_tx, None, mid, None);
+    r.direct_api().declare_media(mid, MediaKind::Video);
+    r.direct_api().expect_stream_rx(ssrc_tx, None, mid, None);
+
+    let pt = l.params_vp8().pt();
+    let addr_l: std::net::SocketAddr = (Ipv4Addr::new(1, 1, 1, 1), 1000).into();
+    let addr_r: std::net::SocketAddr = (Ipv4Addr::new(2, 2, 2, 2), 2000).into();
+
+    const FIRST_SEQ: u16 = 1000;
+    let lost_seq = FIRST_SEQ + 20;
+    let mut lost_once = false;
+    let mut sent: HashMap<u16, Vec<Vec<u8>>> = HashMap::new();
+    let mut now = l.last.max(r.last);
+
+    for step in 0..400_u16 {
+        now += Duration::from_millis(5);
+        l.last = now;
+        r.last = now;
+
+        if step < 40 {
+            let seq = FIRST_SEQ + step;
+            let mut direct = l.direct_api();
+            let stream = direct.stream_tx(&ssrc_tx).unwrap();
+            stream.write_rtp(
+                RtpWrite::new(
+                    pt,
+                    (seq as u64).into(),
+                    step as u32 * 3000,
+                    now,
+                    vec![step as u8; 200],
+                )
+                .nackable(true),
+            );
+        }
+
+        l.span
+            .in_scope(|| l.rtc.handle_input(Input::Timeout(now)))?;
+        let mut to_r = drain_transmits(&mut l)?;
+        r.span
+            .in_scope(|| r.rtc.handle_input(Input::Timeout(now)))?;
+        let mut to_l = drain_transmits(&mut r)?;
+
+        while !to_r.is_empty() || !to_l.is_empty() {
+            if let Some(d) = to_r.pop_front() {
+                if let Some((ssrc, seq)) = rtp_ssrc_seq(&d) {
+                    if ssrc == *ssrc_tx {
+                        sent.entry(seq).or_default().push(d.clone());
+                        // Lose the first transmission of one packet so R asks for it.
+                        if seq == lost_seq && !lost_once {
+                            lost_once = true;
+                            continue;
+                        }
+                    }
+                }
+                to_l.extend(receive_datagram(&mut r, now, addr_l, addr_r, &d)?);
+            }
+            if let Some(d) = to_l.pop_front() {
+                to_r.extend(receive_datagram(&mut l, now, addr_r, addr_l, &d)?);
+            }
+        }
+    }
+
+    assert!(lost_once, "the packet to lose was never sent");
+    let copies = &sent[&lost_seq];
+    assert!(
+        copies.len() >= 2,
+        "the lost packet must be resent in-band (sent {} times)",
+        copies.len()
+    );
+    for (seq, copies) in &sent {
+        for again in &copies[1..] {
+            assert_eq!(
+                again, &copies[0],
+                "seq {seq}: an in-band resend must be the original protected packet, byte for byte"
+            );
+        }
+    }
+
+    let recovered = r.events.iter().any(|(_, e)| {
+        matches!(e.as_raw_packet(), Some(RawPacket::RtpRx(h, _))
+            if h.ssrc == ssrc_tx && h.sequence_number == lost_seq)
+    });
+    assert!(recovered, "R must receive the resent packet");
 
     Ok(())
 }
