@@ -1076,13 +1076,13 @@ pub fn inband_resend_bounded_by_nack_policy() -> Result<(), RtcError> {
     l.direct_api()
         .stream_tx(&ssrc)
         .unwrap()
-        .set_nack_policy(Some(NackPolicy {
-            min_interval: Duration::from_millis(100),
-            rtt_factor: 2,
+        .set_nack_policy(Some(NackPolicy::new(
+            Duration::from_millis(100),
+            2,
             max_resends,
-            hold_after_send: true,
-            max_queued_resends: 1000,
-        }));
+            true,
+            1000,
+        )));
 
     let num_packets = 500;
     send_with_loss(&mut l, &mut r, ssrc, pt, num_packets, 1000, |seq| {
