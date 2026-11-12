@@ -1,3 +1,4 @@
+# Changed by Alakazam Labs for sew-str0m; the fork's patches are listed in its README.
 [package]
 name = "sew-str0m"
 version = "0.25.1"

@@ -1,3 +1,4 @@
+// Changed by Alakazam Labs for sew-str0m; the fork's patches are listed in its README.
 use std::collections::{HashMap, VecDeque};
 use std::fmt::{self};
 use std::sync::Arc;

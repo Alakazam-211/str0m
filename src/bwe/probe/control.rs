@@ -1,3 +1,4 @@
+// Changed by Alakazam Labs for sew-str0m; the fork's patches are listed in its README.
 //! Bandwidth probing controller - decides when and how to probe network capacity.
 //!
 //! This module implements WebRTC's `ProbeController` state machine for discovering available

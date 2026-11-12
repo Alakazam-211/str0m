@@ -1,3 +1,4 @@
+<!-- Changed by Alakazam Labs for sew-str0m; the fork's patches are listed in its README. -->
 # Bandwidth Estimation (BWE)
 
 str0m implements Google Congestion Control (GCC) bandwidth estimation

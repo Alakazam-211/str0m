@@ -1,3 +1,4 @@
+// Changed by Alakazam Labs for sew-str0m; the fork's patches are listed in its README.
 //! **This is sew-str0m, a fork of [str0m](https://github.com/algesten/str0m)** that Alakazam
 //! Labs publishes for Sew, Alakazam Labs' chat and voice core: upstream str0m 0.25.0 plus
 //! patches. Depend on it as `str0m = { package = "sew-str0m", version = "0.25.1" }`; the library

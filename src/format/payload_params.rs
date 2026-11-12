@@ -1,3 +1,4 @@
+// Changed by Alakazam Labs for sew-str0m; the fork's patches are listed in its README.
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::ops::RangeInclusive;

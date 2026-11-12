@@ -1,3 +1,4 @@
+<!-- Changed by Alakazam Labs for sew-str0m; the fork's patches are listed in its README. -->
 # sew-str0m
 
 **sew-str0m is a fork of [str0m](https://github.com/algesten/str0m)**, the Sans I/O WebRTC
