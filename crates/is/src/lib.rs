@@ -1,3 +1,10 @@
+//! **This is sew-str0m-is, a fork of `is`, the ICE crate of
+//! [str0m](https://github.com/algesten/str0m)**, that Alakazam Labs publishes with sew-str0m for
+//! Sew, Alakazam Labs' chat and voice core. Depend on it as
+//! `is = { package = "sew-str0m-is", version = "0.12.1" }`; the library name stays `is`. Its
+//! types do not mix with upstream `is`'s. The crate's README lists the patches and how to report
+//! security problems privately. The rest of this page is upstream's documentation.
+//!
 //! # is -- ICE in Sans-IO style
 //!
 //! Standalone [ICE][rfc8445] agent extracted from the [str0m][str0m] WebRTC library.

@@ -1,3 +1,11 @@
+//! **This is sew-str0m, a fork of [str0m](https://github.com/algesten/str0m)** that Alakazam
+//! Labs publishes for Sew, Alakazam Labs' chat and voice core: upstream str0m 0.25.0 plus
+//! patches. Depend on it as `str0m = { package = "sew-str0m", version = "0.25.1" }`; the library
+//! name stays `str0m`. It replaces upstream str0m in a build (its types do not mix with
+//! upstream's), and works with upstream's `str0m-*` backend crates. The crate's README lists the
+//! patches and the defaults that differ from upstream, and how to report security problems
+//! privately. The rest of this page is upstream's documentation.
+//!
 //! <image
 //! src="https://user-images.githubusercontent.com/227204/226143511-66fe5264-6ab7-47b9-9551-90ba7e155b96.svg"
 //!     alt="str0m logo" >
