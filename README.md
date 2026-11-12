@@ -28,7 +28,8 @@ str0m = { package = "sew-str0m", version = "0.25.1" }
   mix payload types with and without RTX and for RED packets. `PayloadParams::set_resend`
   configures or disables RTX.
 - `StreamTx::set_nack_policy` and `NackPolicy`: per-packet limits on answering NACKs (resends per
-  packet, hold-off, queue size), with `NackPolicy::default()` and `NackPolicy::new()`.
+  packet, hold-off, queue size), with `NackPolicy::default()`, `NackPolicy::new()` and `with_*`
+  setters.
 - Application-supplied ICE credentials on restarts: `SdpApi::ice_restart_with` and
   `SdpApi::set_restart_credentials`.
 - No padding on a stream whose media stopped sending.

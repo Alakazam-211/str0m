@@ -21,7 +21,8 @@ Changes:
   * Support NACK retransmission without RTX, resending in-band on the main SSRC
   * Add `PayloadParams::set_resend` to configure or disable RTX
   * Add `StreamTx::set_nack_policy` to bound resends per packet (count, hold-off, queue size);
-    `NackPolicy` is `#[non_exhaustive]`, with `NackPolicy::default()` and `NackPolicy::new()`
+    `NackPolicy` is `#[non_exhaustive]`, with `NackPolicy::default()`, `NackPolicy::new()` and
+    `with_*` setters
   * Let the application supply local ICE credentials on restarts: `SdpApi::ice_restart_with` and
     `SdpApi::set_restart_credentials` (for remote-initiated restarts in `accept_offer`); the
     credentials must be random, at RFC 8445 sizes
