@@ -3059,6 +3059,85 @@ mod test {
     }
 
     #[test]
+    fn ice_lite_controlled_picks_only_succeeded_pairs() {
+        // A controlled ice-lite agent sends no checks; a pair succeeds when an
+        // authenticated binding request arrives on it. The send pair must be
+        // one of those that the controlling agent also nominated: never a
+        // signaled candidate that sent nothing (however high its priority),
+        // nor a pair whose request carried no USE-CANDIDATE.
+        let mut agent = new_test_agent();
+        agent.set_ice_lite(true);
+        agent.set_controlling(false);
+        agent
+            .add_local_candidate(Candidate::host(ipv4_1(), "udp").unwrap())
+            .unwrap();
+        let remote_creds = IceCreds::new();
+        agent.set_remote_credentials(remote_creds.clone());
+
+        // Signaled with the highest priority, but it never sends a request.
+        let mut silent =
+            Candidate::from_sdp_string("candidate:1 1 udp 2130706431 3.4.5.6 5000 typ host")
+                .unwrap();
+        silent.set_ufrag(&remote_creds.ufrag);
+        let silent_addr = silent.addr();
+        agent.add_remote_candidate(silent);
+
+        let request = |agent: &mut IceAgent, now: Instant, source: SocketAddr, nominate: bool| {
+            let username = format!("{}:{}", agent.local_credentials.ufrag, remote_creds.ufrag);
+            let req =
+                StunMessage::binding_request(&username, TransId::new(), true, 0, 1000, nominate);
+            let bytes = serialize_stun_msg(req, &agent.local_credentials.pass);
+            assert!(agent.handle_packet(
+                now,
+                StunPacket {
+                    message: StunMessage::parse(&bytes).unwrap(),
+                    source,
+                    destination: ipv4_1(),
+                    proto: Protocol::Udp,
+                },
+            ));
+        };
+        let sends_to = |agent: &IceAgent| {
+            agent.events.iter().rev().find_map(|e| match e {
+                IceAgentEvent::NominatedSend { destination, .. } => Some(*destination),
+                _ => None,
+            })
+        };
+        let send_pair_succeeded = |agent: &IceAgent| {
+            let id = agent.nominated_send.expect("a send pair");
+            let pair = agent
+                .candidate_pairs
+                .iter()
+                .find(|p| p.id() == id)
+                .expect("the send pair exists");
+            pair.state() == CheckState::Succeeded && pair.is_nominated()
+        };
+
+        let t0 = Instant::now();
+        agent.handle_timeout(t0);
+        assert_eq!(sends_to(&agent), None, "nothing to send on yet");
+
+        // A request without USE-CANDIDATE: the pair succeeds but is not nominated.
+        request(&mut agent, t0, ipv4_4(), false);
+        agent.handle_timeout(t0 + Duration::from_millis(100));
+        assert_eq!(sends_to(&agent), None, "a pair that was not nominated");
+
+        // A nominated, low-priority pair: chosen over the silent high-priority one.
+        request(&mut agent, t0 + Duration::from_millis(200), ipv4_2(), true);
+        assert_eq!(sends_to(&agent), Some(ipv4_2()));
+        assert!(send_pair_succeeded(&agent));
+
+        for ms in [500, 2_000, 5_000] {
+            agent.handle_timeout(t0 + Duration::from_millis(ms));
+            assert_ne!(sends_to(&agent), Some(silent_addr), "at {ms} ms");
+            assert_ne!(sends_to(&agent), Some(ipv4_4()), "at {ms} ms");
+            if agent.nominated_send.is_some() {
+                assert!(send_pair_succeeded(&agent), "at {ms} ms");
+            }
+        }
+    }
+
+    #[test]
     fn controlled_sends_only_on_a_nominated_pair_whose_check_succeeded() {
         // RFC 8445 §7.3.1.5: the controlled agent acts on USE-CANDIDATE only
         // for a pair that is, or becomes, valid. Here the peer nominates the
