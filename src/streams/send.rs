@@ -194,7 +194,8 @@ pub struct StreamTx {
 ///
 /// [`NackPolicy::default`] is 3 resends per packet, a 100 ms hold-off of at most 2 RTTs,
 /// held after the first send too, and at most 1000 queued resends. Build a policy with
-/// [`NackPolicy::new`], or start from the default and change its fields.
+/// [`NackPolicy::new`], or start from the default and change it with the `with_*` setters,
+/// such as [`NackPolicy::with_max_resends`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub struct NackPolicy {
@@ -226,6 +227,38 @@ impl NackPolicy {
             hold_after_send,
             max_queued_resends,
         }
+    }
+}
+
+impl NackPolicy {
+    /// This policy with `min_interval` as the upper bound of the hold-off between resends.
+    pub fn with_min_interval(mut self, min_interval: Duration) -> Self {
+        self.min_interval = min_interval;
+        self
+    }
+
+    /// This policy with the hold-off at most `rtt_factor` RTTs.
+    pub fn with_rtt_factor(mut self, rtt_factor: u32) -> Self {
+        self.rtt_factor = rtt_factor;
+        self
+    }
+
+    /// This policy with at most `max_resends` resends per packet.
+    pub fn with_max_resends(mut self, max_resends: u8) -> Self {
+        self.max_resends = max_resends;
+        self
+    }
+
+    /// This policy holding NACKs within the hold-off of a packet's first send, or not.
+    pub fn with_hold_after_send(mut self, hold_after_send: bool) -> Self {
+        self.hold_after_send = hold_after_send;
+        self
+    }
+
+    /// This policy with at most `max_queued_resends` resends waiting in the queue.
+    pub fn with_max_queued_resends(mut self, max_queued_resends: usize) -> Self {
+        self.max_queued_resends = max_queued_resends;
+        self
     }
 }
 
@@ -1707,6 +1740,15 @@ mod test {
         assert_eq!(
             d,
             NackPolicy::new(Duration::from_millis(100), 2, 3, true, 1000)
+        );
+        assert_eq!(
+            NackPolicy::default()
+                .with_min_interval(Duration::from_millis(50))
+                .with_rtt_factor(4)
+                .with_max_resends(1)
+                .with_hold_after_send(false)
+                .with_max_queued_resends(10),
+            NackPolicy::new(Duration::from_millis(50), 4, 1, false, 10)
         );
 
         // Within 100 ms of the send: held.
