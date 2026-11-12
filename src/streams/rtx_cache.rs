@@ -4,6 +4,8 @@ use std::time::Instant;
 use crate::io::DATAGRAM_MAX_PACKET_SIZE;
 use crate::rtp_::SeqNo;
 
+use crate::rtp_::RtpHeader;
+
 use super::RtpPacket;
 use super::rtx_cache_buf::EvictingBuffer;
 
@@ -15,6 +17,20 @@ const RTX_CACHE_QUANTIZE_SLOTS: usize = DATAGRAM_MAX_PACKET_SIZE / RTX_CACHE_SIZ
 struct CachedPacket {
     packet: RtpPacket,
     nack: NackState,
+    /// The unprotected bytes of the packet's first transmission, kept when the packet may be
+    /// resent on its original SSRC and sequence number (see [`SentWire`]).
+    wire: Option<SentWire>,
+}
+
+/// The exact unprotected bytes (RTP header and payload) of a packet's first transmission.
+///
+/// A resend on the original SSRC and sequence number repeats the original packet exactly.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct SentWire {
+    /// RTP header followed by the payload.
+    pub bytes: Box<[u8]>,
+    /// The header as written at the start of `bytes` (`header_len` set).
+    pub header: RtpHeader,
 }
 
 /// How often a cached packet has been resent in answer to NACKs, and when.
@@ -49,7 +65,20 @@ impl RtxCache {
 
     /// Caches a sent packet. An `in_band` packet (its PT has no RTX PT) can only be resent
     /// in-band, so it is never offered as a spurious (RTX) padding resend.
+    #[cfg(test)]
     pub fn cache_sent_packet(&mut self, packet: RtpPacket, now: Instant, in_band: bool) {
+        self.cache_sent_packet_with_wire(packet, now, in_band, None);
+    }
+
+    /// Like [`RtxCache::cache_sent_packet`], also keeping the bytes the packet was first sent
+    /// with, which a resend on the original SSRC and sequence number repeats verbatim.
+    pub fn cache_sent_packet_with_wire(
+        &mut self,
+        packet: RtpPacket,
+        now: Instant,
+        in_band: bool,
+        wire: Option<SentWire>,
+    ) {
         assert!(packet.nackable);
         let seq_no = packet.seq_no;
         let quantized_size = packet.payload.len() / RTX_CACHE_SIZE_QUANTIZER;
@@ -59,7 +88,7 @@ impl RtxCache {
             in_band,
         };
         self.packet_by_seq_no
-            .push(*seq_no, now, CachedPacket { packet, nack });
+            .push(*seq_no, now, CachedPacket { packet, nack, wire });
         if !in_band {
             self.seq_no_by_quantized_size[quantized_size] = seq_no;
         }
@@ -74,6 +103,11 @@ impl RtxCache {
         self.packet_by_seq_no
             .get_mut(*seq_no)
             .map(|c| &mut c.packet)
+    }
+
+    /// The bytes a cached packet was first sent with, if they were kept.
+    pub fn sent_wire(&self, seq_no: SeqNo) -> Option<&SentWire> {
+        self.packet_by_seq_no.get(*seq_no)?.wire.as_ref()
     }
 
     /// The NACK bookkeeping of a cached packet, with its payload size.
