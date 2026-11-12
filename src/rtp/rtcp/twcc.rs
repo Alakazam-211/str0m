@@ -1225,15 +1225,16 @@ impl TwccSendRegister {
                 return false;
             }
 
-            let apply_report_counter = if let Some(rr) = r.recv_report {
+            let apply_report_counter = match r.recv_report {
                 // This packed was already acked and handled before so carry
                 // over previous apply_report_counter, so it won't be included
                 // in the current apply_report() call result.
-                rr.remote_recv_time
-                    .map(|_| rr.apply_report_counter)
-                    .unwrap_or_else(|| apply_report_counter)
-            } else {
-                apply_report_counter
+                Some(rr) if rr.remote_recv_time.is_some() => rr.apply_report_counter,
+                // Already reported lost, and this report has it lost again (a report that
+                // repeats earlier sequence numbers, as after a late or repeated packet): it was
+                // counted then and is not counted again.
+                Some(rr) if remote_recv_time.is_none() => rr.apply_report_counter,
+                _ => apply_report_counter,
             };
 
             // Carry over remote recv time if this packet was acked before.
@@ -2106,6 +2107,68 @@ mod test {
             iter.map(|r| *r.seq()).collect::<Vec<_>>(),
             vec![0, 1, 2, 3, 4, 5, 6, 7]
         );
+    }
+
+    #[test]
+    fn test_twcc_send_register_lost_packet_repeated_in_a_later_report_counts_once() {
+        let mut reg = TwccSendRegister::new(25);
+        let mut now = Instant::now();
+        for i in 0..4 {
+            reg.register_seq(TwccPacketId::new(i), now, 0);
+            now = now + Duration::from_millis(15);
+        }
+        // seq 1 lost, the rest received.
+        let report = |chunks: Vec<PacketChunk>, base_seq: u16, n: u16, deltas: usize| Twcc {
+            sender_ssrc: Ssrc::new(),
+            ssrc: Ssrc::new(),
+            base_seq,
+            status_count: n,
+            reference_time: 35,
+            feedback_count: 0,
+            chunks: chunks.into(),
+            delta: vec![Delta::Small(10); deltas].into(),
+        };
+        let lost_one = || {
+            vec![
+                PacketChunk::Run(PacketStatus::ReceivedSmallDelta, 1),
+                PacketChunk::Run(PacketStatus::NotReceived, 1),
+                PacketChunk::Run(PacketStatus::ReceivedSmallDelta, 2),
+            ]
+        };
+
+        let first: Vec<_> = reg
+            .apply_report(report(lost_one(), 0, 4, 3), now)
+            .expect("a report")
+            .map(|r| (*r.seq(), r.remote_recv_time().is_some()))
+            .collect();
+        assert_eq!(first, vec![(0, true), (1, false), (2, true), (3, true)]);
+
+        // A later report that repeats the same range (as after a late packet) adds nothing:
+        // seq 1 was counted lost once already.
+        now = now + Duration::from_millis(20);
+        let again: Vec<_> = reg
+            .apply_report(report(lost_one(), 0, 4, 3), now)
+            .expect("a report")
+            .map(|r| *r.seq())
+            .collect();
+        assert!(again.is_empty(), "{again:?}");
+
+        // seq 1 arrives after all: it is returned once, received.
+        now = now + Duration::from_millis(20);
+        let late: Vec<_> = reg
+            .apply_report(
+                report(
+                    vec![PacketChunk::Run(PacketStatus::ReceivedSmallDelta, 1)],
+                    1,
+                    1,
+                    1,
+                ),
+                now,
+            )
+            .expect("a report")
+            .map(|r| (*r.seq(), r.remote_recv_time().is_some()))
+            .collect();
+        assert_eq!(late, vec![(1, true)]);
     }
 
     #[test]
