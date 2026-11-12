@@ -16,9 +16,8 @@ Most users get it through sew-str0m (`str0m = { package = "sew-str0m", version =
 
 - The library names stay upstream's: `is` for this crate and `str0m` for [sew-str0m][sew-str0m],
   so code says `use is::…` and `use str0m::…`.
-- It replaces upstream `is` in a build. It is a different crate to Cargo, so its types do not mix
-  with upstream `is`'s (or upstream str0m's): a build that also depends on upstream `is` gets two
-  separate copies whose types cannot be passed to each other.
+- It is used instead of upstream `is`. To Cargo it is a different crate: a build that also pulls
+  in upstream `is` gets both, and their types do not mix (nor do they with upstream str0m's).
 - `str0m-proto` and the `str0m-*` backend crates are upstream's crates from crates.io, and work
   with it.
 

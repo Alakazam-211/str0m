@@ -13,9 +13,8 @@ str0m = { package = "sew-str0m", version = "0.25.1" }
 
 - The library names stay upstream's: `str0m` for this crate and `is` for its ICE crate
   ([sew-str0m-is][is]), so code says `use str0m::…` and `use is::…`.
-- It replaces upstream str0m in a build. It is a different crate to Cargo, so its types do not
-  mix with upstream str0m's: a build that also depends on upstream `str0m` gets two separate
-  copies whose types cannot be passed to each other.
+- It is used instead of upstream str0m. To Cargo it is a different crate: a build that also pulls
+  in upstream `str0m` gets both, and their types do not mix.
 - The `str0m-*` backend crates (`str0m-aws-lc-rs`, `str0m-rust-crypto`, `str0m-openssl`,
   `str0m-wincrypto`, `str0m-apple-crypto`) and `str0m-proto` are upstream's crates from
   crates.io, and work with it.
