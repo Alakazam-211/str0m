@@ -47,6 +47,8 @@ str0m = { package = "sew-str0m", version = "0.25.1" }
   ([str0m PR #1126][pr1126], an open upstream PR, with its follow-up commits), and a
   delay-based decrease applies only when the link, not the sender, limits the acknowledged
   packets ([str0m issue #1127][i1127]).
+- TWCC: a packet already reported lost is not counted lost again when a later feedback report
+  repeats it (a report that restarts from an earlier sequence number, after a late packet).
 
 `CHANGELOG.md`, in this package and the repository, lists the same changes under 0.25.1.
 
