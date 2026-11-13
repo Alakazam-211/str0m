@@ -1,3 +1,4 @@
+// Changed by Alakazam Labs for sew-str0m; the fork's patches are listed in its README.
 //! Exported things with feature `_internal_test_exports`.
 
 use crate::Rtc;
@@ -78,5 +79,10 @@ impl TestSrtp {
         header.header_len = header_len;
         let packet = &buf[..header_len + payload.len()];
         self.0.protect_rtp(packet, &header, seq)
+    }
+
+    /// Encrypt a supplied (compound) RTCP packet, including deliberately malformed reports.
+    pub fn protect_rtcp(&mut self, buf: &[u8]) -> Vec<u8> {
+        self.0.protect_rtcp(buf)
     }
 }
