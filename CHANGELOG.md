@@ -44,6 +44,10 @@ Changes:
   * TWCC: a packet already reported lost is not counted lost again when a later feedback
     report repeats it (a report that restarts from an earlier sequence number, after a late
     packet)
+  * TWCC: skip zero-length run chunks in feedback reports instead of applying their status to
+    the packets after them (str0m PR #1143, an open upstream PR)
+  * TWCC: read the deltas after a run of large deltas from the right offset; a report too short
+    for them is rejected (str0m PR #1144, an open upstream PR)
 
 # 0.25.0
 
