@@ -2243,6 +2243,86 @@ mod test {
         );
     }
 
+    /// Parse `buf` and apply it to a send register holding seqs 0..4. Returns each record the
+    /// report covers with its remote receive time relative to the register's time zero.
+    fn apply_wire_report(buf: &[u8]) -> Vec<(u64, Option<Duration>)> {
+        let mut reg = TwccSendRegister::new(25);
+        let now = Instant::now();
+        for i in 0..4 {
+            reg.register_seq(TwccPacketId::new(i), now, 0);
+        }
+        let twcc = Twcc::try_from(buf).unwrap();
+        reg.apply_report(twcc, now)
+            .expect("a report")
+            .map(|r| (*r.seq(), r.remote_recv_time().map(|t| t - now)))
+            .collect()
+    }
+
+    #[test]
+    fn test_twcc_send_register_zero_length_runs_do_not_change_later_statuses() {
+        let ms = |v| Some(Duration::from_millis(v));
+
+        // A zero-length not-received run first: the packets after it are received.
+        let buf = [
+            0, 0, 0, 1, // sender ssrc
+            0, 0, 0, 2, // media ssrc
+            0, 0, // base seq
+            0, 3, // status count
+            0, 0, 0, // reference time
+            0, // feedback count
+            0x00, 0x00, // run of 0 not received
+            0x20, 0x03, // run of 3 small delta
+            0x04, 0x04, 0x04, // small deltas 1ms
+            0x00, // padding
+        ];
+        assert_eq!(
+            apply_wire_report(&buf),
+            vec![(0, ms(1)), (1, ms(2)), (2, ms(3))]
+        );
+
+        // A zero-length small delta run before a large delta: the large delta is read as one.
+        let buf = [
+            0, 0, 0, 1, // sender ssrc
+            0, 0, 0, 2, // media ssrc
+            0, 0, // base seq
+            0, 2, // status count
+            0, 0, 0, // reference time
+            0, // feedback count
+            0x20, 0x00, // run of 0 small delta
+            0x40, 0x01, // run of 1 large delta
+            0x20, 0x01, // run of 1 small delta
+            0x01, 0x90, // large delta 100ms
+            0x08, // small delta 2ms
+            0x00, // padding
+        ];
+        assert_eq!(apply_wire_report(&buf), vec![(0, ms(100)), (1, ms(102))]);
+    }
+
+    #[test]
+    fn test_twcc_send_register_deltas_after_a_large_delta_run() {
+        let buf = [
+            0, 0, 0, 1, // sender ssrc
+            0, 0, 0, 2, // media ssrc
+            0, 0, // base seq
+            0, 3, // status count
+            0, 0, 0, // reference time
+            0, // feedback count
+            0x40, 0x02, // run of 2 large or negative delta
+            0x20, 0x01, // run of 1 small delta
+            0x01, 0x90, // large delta 100ms
+            0xff, 0xf0, // negative delta -4ms
+            0x08, // small delta 2ms
+        ];
+        let ms = |v| Some(Duration::from_millis(v));
+        assert_eq!(
+            apply_wire_report(&buf),
+            vec![(0, ms(100)), (1, ms(96)), (2, ms(98))]
+        );
+
+        // Without the small delta the report is too short and is rejected.
+        assert!(Twcc::try_from(&buf[..buf.len() - 1]).is_err());
+    }
+
     #[test]
     fn test_twcc_register_send_records() {
         let mut reg = TwccSendRegister::new(25);
