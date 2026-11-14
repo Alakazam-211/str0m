@@ -412,14 +412,15 @@ pub fn inband_resend_resends_same_packet() -> Result<(), RtcError> {
     // Per seq, collect the payload of every transmission L made on the main SSRC.
     let mut tx_by_seq: HashMap<u16, Vec<Vec<u8>>> = HashMap::new();
     for (_, e) in &l.events {
-        if let Some(RawPacket::RtpTx(h, buf)) = e.as_raw_packet() {
-            if h.ssrc == ssrc && h.payload_type == pt {
-                let payload = buf[h.header_len..].to_vec();
-                tx_by_seq
-                    .entry(h.sequence_number)
-                    .or_default()
-                    .push(payload);
-            }
+        if let Some(RawPacket::RtpTx(h, buf)) = e.as_raw_packet()
+            && h.ssrc == ssrc
+            && h.payload_type == pt
+        {
+            let payload = buf[h.header_len..].to_vec();
+            tx_by_seq
+                .entry(h.sequence_number)
+                .or_default()
+                .push(payload);
         }
     }
 
@@ -446,10 +447,10 @@ pub fn inband_resend_resends_same_packet() -> Result<(), RtcError> {
 
     // R must receive the exact original payload for every seq, recovered or not.
     for (_, e) in &r.events {
-        if let Some(RawPacket::RtpRx(h, buf)) = e.as_raw_packet() {
-            if h.ssrc == ssrc {
-                assert_eq!(buf.as_slice(), payload_for(h.sequence_number).as_slice());
-            }
+        if let Some(RawPacket::RtpRx(h, buf)) = e.as_raw_packet()
+            && h.ssrc == ssrc
+        {
+            assert_eq!(buf.as_slice(), payload_for(h.sequence_number).as_slice());
         }
     }
 
@@ -726,10 +727,11 @@ pub fn inband_resend_bounded_by_nack_policy() -> Result<(), RtcError> {
 
     let mut tx_by_seq: HashMap<u16, usize> = HashMap::new();
     for (_, e) in &l.events {
-        if let Some(RawPacket::RtpTx(h, _)) = e.as_raw_packet() {
-            if h.ssrc == ssrc && h.payload_type == pt {
-                *tx_by_seq.entry(h.sequence_number).or_default() += 1;
-            }
+        if let Some(RawPacket::RtpTx(h, _)) = e.as_raw_packet()
+            && h.ssrc == ssrc
+            && h.payload_type == pt
+        {
+            *tx_by_seq.entry(h.sequence_number).or_default() += 1;
         }
     }
     let resent = tx_by_seq.values().filter(|n| **n > 1).count();
@@ -855,14 +857,14 @@ pub fn inband_resend_wire_bytes_repeat_original() -> Result<(), RtcError> {
 
         while !to_r.is_empty() || !to_l.is_empty() {
             if let Some(d) = to_r.pop_front() {
-                if let Some((ssrc, seq)) = rtp_ssrc_seq(&d) {
-                    if ssrc == *ssrc_tx {
-                        sent.entry(seq).or_default().push(d.clone());
-                        // Lose the first transmission of one packet so R asks for it.
-                        if seq == lost_seq && !lost_once {
-                            lost_once = true;
-                            continue;
-                        }
+                if let Some((ssrc, seq)) = rtp_ssrc_seq(&d)
+                    && ssrc == *ssrc_tx
+                {
+                    sent.entry(seq).or_default().push(d.clone());
+                    // Lose the first transmission of one packet so R asks for it.
+                    if seq == lost_seq && !lost_once {
+                        lost_once = true;
+                        continue;
                     }
                 }
                 to_l.extend(receive_datagram(&mut r, now, addr_l, addr_r, &d)?);

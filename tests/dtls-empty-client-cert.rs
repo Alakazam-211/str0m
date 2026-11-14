@@ -174,7 +174,10 @@ fn dtls12_empty_client_certificate_fails_the_handshake() {
         now += Duration::from_millis(10);
     }
 
-    assert!(rewrote, "the client's Certificate should have been replaced");
+    assert!(
+        rewrote,
+        "the client's Certificate should have been replaced"
+    );
     assert!(
         !r_connected && !r.is_connected(),
         "the server must not complete a handshake with an empty client Certificate"

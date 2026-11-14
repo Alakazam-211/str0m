@@ -1967,7 +1967,7 @@ impl IceAgent {
                 .any(|p| p.is_nominated() && fresh(p));
             self.candidate_pairs
                 .iter_mut()
-                .filter(|p| p.is_nominated() && (!any_fresh || fresh(&**p)))
+                .filter(|p| p.is_nominated() && (!any_fresh || fresh(p)))
                 .max_by_key(|p| p.prio())
         } else {
             // For controlled agents, we pick the best pair from what the controlling
