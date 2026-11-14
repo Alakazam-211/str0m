@@ -1,8 +1,12 @@
 <!-- Changed by Alakazam Labs for sew-str0m; the fork's patches are listed in its README. -->
 # Unreleased
 
-  * Hardening: saturating sequence arithmetic for peer TWCC reports; a report whose base is far
-    ahead of the last sent packet matches no send record and is dropped
+  * TWCC: limit feedback reports to 65535 packets (str0m PR #1151, an open upstream PR)
+  * TWCC: ignore received sequence numbers that wrap back before 0 (the receive side), and let a
+    feedback report's sequence range run on past the end of the 64-bit space (the send side; a
+    report whose first status matches no send record is still dropped) (str0m PR #1152, an open
+    upstream PR). On the send side it replaces this fork's saturating sequence arithmetic for
+    peer TWCC reports
 
 # 0.25.1
 
