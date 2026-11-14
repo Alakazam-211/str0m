@@ -33,6 +33,13 @@ It also carries one upstream contributor's commit ahead of its release: `7a925e9
 retransmission without RTX via in-band resend on the main SSRC, by Jury Jaraševič
 ([str0m#980](https://github.com/algesten/str0m/pull/980)).
 
+It also carries two open upstream PRs by Marcus Asteborg, applied unchanged (tests: `b08bbbd4`):
+
+- `9f859afd` TWCC: skip zero-length run chunks instead of applying their status to the packets
+  after them ([str0m#1143](https://github.com/algesten/str0m/pull/1143)).
+- `fd72c9ac` TWCC: read the deltas after a run of large deltas from the right offset; a report
+  too short for them is rejected ([str0m#1144](https://github.com/algesten/str0m/pull/1144)).
+
 It also applies upstream fixes released in str0m 0.25.0, ahead of a rebase onto that release:
 
 - `741a0af8` STUN MESSAGE-INTEGRITY attribute handling (upstream `5a083231`).

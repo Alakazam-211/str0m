@@ -9,6 +9,10 @@
   * Add `StreamTx::set_nack_policy` to bound resends per packet (count, hold-off, queue size)
   * Let the application supply local ICE credentials on restarts: `SdpApi::ice_restart_with` and
     `SdpApi::set_restart_credentials` (for remote-initiated restarts in `accept_offer`)
+  * TWCC: skip zero-length run chunks in feedback reports instead of applying their status to
+    the packets after them (str0m PR #1143, an open upstream PR)
+  * TWCC: read the deltas after a run of large deltas from the right offset; a report too short
+    for them is rejected (str0m PR #1144, an open upstream PR)
 
 # 0.24.0
 
