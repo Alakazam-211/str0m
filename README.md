@@ -9,7 +9,7 @@ library. Alakazam Labs publishes it for Sew, Alakazam Labs' chat and voice core:
 
 ```toml
 [dependencies]
-str0m = { package = "sew-str0m", version = "0.25.1" }
+str0m = { package = "sew-str0m", version = "0.25.2" }
 ```
 
 - The library names stay upstream's: `str0m` for this crate and `is` for its ICE crate
@@ -49,8 +49,14 @@ str0m = { package = "sew-str0m", version = "0.25.1" }
   of the packets after it ([str0m PR #1143][pr1143]), and the deltas after a run of large deltas
   are read from the right offset, so a report too short for them is rejected
   ([str0m PR #1144][pr1144]); both open upstream PRs.
+- TWCC feedback reports are limited to 65535 packets ([str0m PR #1151][pr1151]), and a received
+  TWCC sequence number that wraps back before 0 is ignored, while a report's sequence range runs
+  on past the end of the 64-bit space ([str0m PR #1152][pr1152]); both open upstream PRs. A
+  report whose base sequence number is far ahead of the sent packets matches no send record and
+  is dropped.
 
-`CHANGELOG.md`, in this package and the repository, lists the same changes under 0.25.1.
+`CHANGELOG.md`, in this package and the repository, lists the same changes under 0.25.1 and
+0.25.2.
 
 ## Defaults that differ from upstream
 
@@ -84,6 +90,8 @@ itself go to the [upstream issue tracker](https://github.com/algesten/str0m/issu
 [i1127]: https://github.com/algesten/str0m/issues/1127
 [pr1143]: https://github.com/algesten/str0m/pull/1143
 [pr1144]: https://github.com/algesten/str0m/pull/1144
+[pr1151]: https://github.com/algesten/str0m/pull/1151
+[pr1152]: https://github.com/algesten/str0m/pull/1152
 [report]: https://github.com/Alakazam-211/str0m/security/advisories/new
 
 # str0m

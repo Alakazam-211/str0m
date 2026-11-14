@@ -1,6 +1,22 @@
 <!-- Changed by Alakazam Labs for sew-str0m; the fork's patches are listed in its README. -->
 # Unreleased
 
+# 0.25.2
+
+sew-str0m 0.25.2: sew-str0m 0.25.1 plus these changes. sew-str0m-is stays 0.12.1 (unchanged).
+
+Changes:
+
+  * TWCC: limit feedback reports to 65535 packets (str0m PR #1151, an open upstream PR)
+  * TWCC: ignore received sequence numbers that wrap back before 0 (the receive side), and let a
+    feedback report's sequence range run on past the end of the 64-bit space (the send side; a
+    report whose first status matches no send record is dropped) (str0m PR #1152, an open
+    upstream PR)
+  * Tests: a feedback report far ahead of the sent packets matches no send record and is dropped
+  * Tests: the empty-client-certificate DTLS test asserts that the handshake fails on every
+    crypto backend, and checks the "no client certificate received" error only on the dimpl
+    backends (OpenSSL's own DTLS reports its failure with a different error)
+
 # 0.25.1
 
 sew-str0m 0.25.1 and sew-str0m-is 0.12.1: upstream str0m 0.25.0 (is 0.12.0) plus these patches.
