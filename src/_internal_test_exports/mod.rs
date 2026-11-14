@@ -1,6 +1,8 @@
 //! Exported things with feature `_internal_test_exports`.
 
 use crate::Rtc;
+use crate::crypto::CryptoProvider;
+use crate::crypto::dtls::{KeyingMaterial, SrtpProfile};
 use crate::format::PayloadParams;
 use crate::media::Media;
 use crate::media::Mid;
@@ -28,6 +30,12 @@ impl Rtc {
     pub fn _local_ice_creds(&self) -> IceCreds {
         self.ice.local_credentials().clone()
     }
+
+    /// Install known keys so integration tests can encrypt packets as the remote peer.
+    pub fn _set_srtp_keys(&mut self, mat: KeyingMaterial, profile: SrtpProfile, active: bool) {
+        self.session
+            .set_keying_material(mat, &self.crypto_provider, profile, active);
+    }
 }
 
 impl RtpHeader {
@@ -46,3 +54,18 @@ impl PayloadParams {
 
 /// UNSTABLE: not public API!
 pub use crate::bwe_::ProbeClusterConfig;
+
+/// Encrypt packets with controlled contents in integration tests.
+pub struct TestSrtp(crate::rtp_::SrtpContext);
+
+impl TestSrtp {
+    /// Use the same keys and profile as the test receiver's incoming SRTP context.
+    pub fn new(crypto: &CryptoProvider, profile: SrtpProfile, mat: &KeyingMaterial) -> Self {
+        Self(crate::rtp_::SrtpContext::new(crypto, profile, mat, true))
+    }
+
+    /// Encrypt a supplied (compound) RTCP packet, including deliberately malformed reports.
+    pub fn protect_rtcp(&mut self, buf: &[u8]) -> Vec<u8> {
+        self.0.protect_rtcp(buf)
+    }
+}
