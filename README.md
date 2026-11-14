@@ -28,6 +28,10 @@ str0m's licence and credits are unchanged. Each line names the fork commit.
 - Capped initial probes no longer lower the estimate below the start estimate (upstream PR: to
   be added).
 - A delay-based decrease needs the link, not the sender, to limit the acknowledged packets.
+- `020120c1` In-band retransmissions are byte-identical to the original.
+- `c57e931d` TWCC: a packet already reported lost is not counted lost again.
+- `5afa9e40` TWCC: saturating sequence arithmetic for peer reports; a report whose base is far
+  ahead of the last sent packet matches no send record and is dropped (test: `bbbcaf25`).
 
 It also carries one upstream contributor's commit ahead of its release: `7a925e9c`, NACK
 retransmission without RTX via in-band resend on the main SSRC, by Jury Jaraševič

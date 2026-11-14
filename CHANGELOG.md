@@ -13,6 +13,8 @@
     the packets after them (str0m PR #1143, an open upstream PR)
   * TWCC: read the deltas after a run of large deltas from the right offset; a report too short
     for them is rejected (str0m PR #1144, an open upstream PR)
+  * Hardening: saturating sequence arithmetic for peer TWCC reports; a report whose base is far
+    ahead of the last sent packet matches no send record and is dropped
 
 # 0.24.0
 
