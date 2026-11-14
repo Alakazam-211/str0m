@@ -2333,7 +2333,9 @@ mod test {
         };
         assert!(reg.apply_report(twcc, now).is_none());
 
-        // The iterator stops at the end of the sequence space.
+        // The iterator runs on past the end of the sequence space (upstream str0m PR #1152),
+        // so it reaches sent seq 0; the report above is still ignored, because its first status
+        // matches no send record.
         let twcc = Twcc {
             sender_ssrc: Ssrc::new(),
             ssrc: Ssrc::new(),
@@ -2348,7 +2350,7 @@ mod test {
             .into_iter(now, 3.into())
             .map(|(seq, _, _)| *seq)
             .collect();
-        assert_eq!(seqs, vec![u64::MAX - 1]);
+        assert_eq!(seqs, vec![u64::MAX - 1, u64::MAX, 0]);
     }
 
     #[test]
