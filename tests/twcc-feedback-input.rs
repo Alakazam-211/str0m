@@ -248,3 +248,31 @@ fn drain(l: &mut TestRtc) -> Instant {
         }
     }
 }
+
+/// A report whose base sequence number is more than half the 16 bit space ahead of every sent
+/// packet extends to the end of the 64 bit sequence space. It matches no sent packet: nothing is
+/// reported received or lost, and a later report for the sent packets still applies.
+#[test]
+fn report_far_ahead_of_sent_packets_matches_nothing() {
+    let (mut l, mut srtp, sent) = sender();
+    assert!(sent.iter().all(|s| *s < 32_768), "sent seqs {sent:?}");
+
+    // 65535 not-received statuses in runs of at most 8191, no deltas.
+    let mut chunks = vec![8191_u16; 8];
+    chunks.push(65_535 - 8 * 8191);
+    let far = twcc_report(sent[0].wrapping_add(40_000), 65_535, &chunks, &[]);
+    inject(&mut l, &srtp.protect_rtcp(&far));
+    assert_eq!(parsed_reports(&l), 1, "the report reached the session");
+    assert_eq!(
+        egress_loss_after(&mut l),
+        None,
+        "no sent packet was reported"
+    );
+
+    let n = sent.len() as u16;
+    let deltas = vec![0x50; n as usize]; // small delta 20ms each
+    let report = twcc_report(sent[0], n, &[0x2000 | n], &deltas);
+    inject(&mut l, &srtp.protect_rtcp(&report));
+    assert_eq!(parsed_reports(&l), 2);
+    assert_eq!(egress_loss_after(&mut l), Some(0.0));
+}
