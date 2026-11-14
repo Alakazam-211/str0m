@@ -47,7 +47,9 @@ impl Twcc {
         let millis = self.reference_time as u64 * 64;
         let time_base = time_zero + Duration::from_millis(millis);
         let base_seq = extend_u16(Some(*extend_from), self.base_seq);
-        let last_seq = base_seq + self.status_count as u64;
+        // A base_seq far ahead of extend_from extends to just below u64::MAX. Stop the
+        // iteration there rather than run past the end of the sequence space.
+        let last_seq = base_seq.saturating_add(self.status_count as u64);
 
         TwccIter {
             base_seq,
@@ -2296,6 +2298,45 @@ mod test {
             0x00, // padding
         ];
         assert_eq!(apply_wire_report(&buf), vec![(0, ms(100)), (1, ms(102))]);
+    }
+
+    #[test]
+    fn test_twcc_send_register_report_far_ahead_of_sent_seqs() {
+        // Sent seqs 0..4; a report whose base_seq is more than half the 16 bit space ahead
+        // extends to just below u64::MAX. It matches nothing that was sent.
+        let mut reg = TwccSendRegister::new(25);
+        let now = Instant::now();
+        for i in 0..4 {
+            reg.register_seq(TwccPacketId::new(i), now, 0);
+        }
+        let twcc = Twcc {
+            sender_ssrc: Ssrc::new(),
+            ssrc: Ssrc::new(),
+            base_seq: 65_534,
+            status_count: 3,
+            reference_time: 0,
+            feedback_count: 0,
+            chunks: [PacketChunk::Run(PacketStatus::NotReceived, 3)].into(),
+            delta: VecDeque::new(),
+        };
+        assert!(reg.apply_report(twcc, now).is_none());
+
+        // The iterator stops at the end of the sequence space.
+        let twcc = Twcc {
+            sender_ssrc: Ssrc::new(),
+            ssrc: Ssrc::new(),
+            base_seq: 65_534,
+            status_count: 3,
+            reference_time: 0,
+            feedback_count: 0,
+            chunks: [PacketChunk::Run(PacketStatus::NotReceived, 3)].into(),
+            delta: VecDeque::new(),
+        };
+        let seqs: Vec<u64> = twcc
+            .into_iter(now, 3.into())
+            .map(|(seq, _, _)| *seq)
+            .collect();
+        assert_eq!(seqs, vec![u64::MAX - 1]);
     }
 
     #[test]
