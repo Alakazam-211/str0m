@@ -23,7 +23,7 @@ const STATS_INTERVAL: Duration = Duration::from_millis(100);
 
 /// A report whose first chunk is a zero-length run, followed by a run of large deltas, must not
 /// take the zero run's status for the later packets (which would read a large delta as a small
-/// one and panic). The packets it reports received are received.
+/// one and fail). The packets it reports received are received.
 #[test]
 fn zero_length_run_before_large_deltas() {
     let (mut l, mut srtp, sent) = sender();
