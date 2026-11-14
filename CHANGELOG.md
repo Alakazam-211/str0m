@@ -1,6 +1,9 @@
 <!-- Changed by Alakazam Labs for sew-str0m; the fork's patches are listed in its README. -->
 # Unreleased
 
+  * Hardening: saturating sequence arithmetic for peer TWCC reports; a report whose base is far
+    ahead of the last sent packet matches no send record and is dropped
+
 # 0.25.1
 
 sew-str0m 0.25.1 and sew-str0m-is 0.12.1: upstream str0m 0.25.0 (is 0.12.0) plus these patches.
