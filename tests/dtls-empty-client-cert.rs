@@ -183,8 +183,26 @@ fn dtls12_empty_client_certificate_fails_the_handshake() {
         "the server must not complete a handshake with an empty client Certificate"
     );
     let err = r_error.expect("the server should fail the handshake with an error");
-    assert!(
-        err.contains("no client certificate received"),
-        "the server should reject the empty client Certificate, got: {err}"
-    );
+    // Every backend must fail the handshake. Only str0m's own DTLS (dimpl) names the missing
+    // client certificate: OpenSSL's DTLS fails first on the client's Finished, which covers
+    // the real transcript, so it reports a different error.
+    if server_uses_dimpl() {
+        assert!(
+            err.contains("no client certificate received"),
+            "the server should reject the empty client Certificate, got: {err}"
+        );
+    }
+}
+
+/// Whether the server (R) runs str0m's own DTLS (dimpl) rather than OpenSSL's DTLS.
+fn server_uses_dimpl() -> bool {
+    match std::env::var("R_CRYPTO") {
+        Ok(name) => name != "openssl",
+        Err(_) => !cfg!(all(
+            feature = "openssl",
+            not(feature = "openssl-dimpl"),
+            not(feature = "aws-lc-rs"),
+            not(feature = "rust-crypto")
+        )),
+    }
 }
