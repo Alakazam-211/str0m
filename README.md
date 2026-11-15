@@ -38,8 +38,9 @@ It also carries one upstream contributor's commit ahead of its release: `7a925e9
 retransmission without RTX via in-band resend on the main SSRC, by Jury Jaraševič
 ([str0m#980](https://github.com/algesten/str0m/pull/980)).
 
-It also carries seven upstream PRs by Marcus Asteborg, all merged upstream, applied unchanged
-(tests: `b08bbbd4`; the other PRs carry their own):
+It also carries seven upstream PRs by Marcus Asteborg, all merged upstream (tests: `b08bbbd4`;
+the other PRs carry their own). Each is applied unchanged except #1152, which differs by one
+line, noted below:
 
 - `9f859afd` TWCC: skip zero-length run chunks instead of applying their status to the packets
   after them ([str0m#1143](https://github.com/algesten/str0m/pull/1143)).

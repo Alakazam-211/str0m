@@ -10,14 +10,14 @@
   * Let the application supply local ICE credentials on restarts: `SdpApi::ice_restart_with` and
     `SdpApi::set_restart_credentials` (for remote-initiated restarts in `accept_offer`)
   * TWCC: skip zero-length run chunks in feedback reports instead of applying their status to
-    the packets after them (str0m PR #1143, an open upstream PR)
+    the packets after them (str0m PR #1143, merged upstream)
   * TWCC: read the deltas after a run of large deltas from the right offset; a report too short
-    for them is rejected (str0m PR #1144, an open upstream PR)
-  * TWCC: limit feedback reports to 65535 packets (str0m PR #1151, an open upstream PR)
+    for them is rejected (str0m PR #1144, merged upstream)
+  * TWCC: limit feedback reports to 65535 packets (str0m PR #1151, merged upstream)
   * TWCC: ignore received sequence numbers that wrap back before 0 (the receive side), and let a
     feedback report's sequence range run on past the end of the 64-bit space (the send side; a
-    report whose first status matches no send record is still dropped) (str0m PR #1152, an open
-    upstream PR). On the send side it replaces this fork's saturating sequence arithmetic for
+    report whose first status matches no send record is still dropped) (str0m PR #1152, merged
+    upstream). On the send side it replaces this fork's saturating sequence arithmetic for
     peer TWCC reports
   * TWCC: cap feedback runs at 8191 packets (str0m PR #1150, merged upstream)
   * VLA: a resolution of 65536 saturates instead of overflowing (str0m PR #1153, merged upstream)
