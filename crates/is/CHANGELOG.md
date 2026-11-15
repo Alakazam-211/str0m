@@ -1,5 +1,8 @@
 # Unreleased
 
+  * Ignore remote candidates and STUN messages with port 0 or an unspecified IP (`0.0.0.0`,
+    `::`, `::ffff:0.0.0.0`) (str0m PR #1148, merged upstream)
+
 # 0.12.1
 
 sew-str0m-is 0.12.1: upstream is 0.12.0 (from str0m 0.25.0) plus these patches. It ships with

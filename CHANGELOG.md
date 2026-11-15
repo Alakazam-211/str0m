@@ -7,6 +7,10 @@
     report whose first status matches no send record is still dropped) (str0m PR #1152, an open
     upstream PR). On the send side it replaces this fork's saturating sequence arithmetic for
     peer TWCC reports
+  * TWCC: cap feedback runs at 8191 packets (str0m PR #1150, merged upstream)
+  * VLA: a resolution of 65536 saturates instead of overflowing (str0m PR #1153, merged upstream)
+  * ICE: ignore remote candidates and STUN messages with port 0 or an unspecified IP (str0m PR
+    #1148, merged upstream)
 
 # 0.25.1
 
