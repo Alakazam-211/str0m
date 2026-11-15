@@ -59,6 +59,9 @@ str0m = { package = "sew-str0m", version = "0.25.3" }
   upstream.
 - ICE: remote candidates and STUN messages with port 0 or an unspecified IP are ignored
   ([str0m PR #1148][pr1148], merged upstream; in sew-str0m-is).
+- SDP: a remote description whose payload types conflict is rejected with an SDP error instead
+  of panicking, and the established payload parameters are kept ([str0m PR #1154][pr1154],
+  merged upstream).
 
 `CHANGELOG.md`, in this package and the repository, lists the same changes under 0.25.1,
 0.25.2 and 0.25.3.
@@ -100,6 +103,7 @@ itself go to the [upstream issue tracker](https://github.com/algesten/str0m/issu
 [pr1150]: https://github.com/algesten/str0m/pull/1150
 [pr1153]: https://github.com/algesten/str0m/pull/1153
 [pr1148]: https://github.com/algesten/str0m/pull/1148
+[pr1154]: https://github.com/algesten/str0m/pull/1154
 [report]: https://github.com/Alakazam-211/str0m/security/advisories/new
 
 # str0m

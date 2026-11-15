@@ -12,6 +12,9 @@ Changes:
   * VLA: a resolution of 65536 saturates instead of overflowing (str0m PR #1153)
   * ICE (sew-str0m-is): ignore remote candidates and STUN messages with port 0 or an
     unspecified IP (str0m PR #1148)
+  * SDP: reject a remote description whose payload types conflict (one payload type claimed by
+    two codecs, or no payload type left to allocate) with an SDP error instead of panicking; the
+    established payload parameters are kept when an update is rejected (str0m PR #1154)
 
 # 0.25.2
 
