@@ -1,3 +1,4 @@
+// Changed by Alakazam Labs for sew-str0m; the fork's patches are listed in its README.
 use std::collections::HashSet;
 use std::ops::{Deref, DerefMut};
 
@@ -151,6 +152,7 @@ impl CodecConfig {
             fb_remb,
             red: None,
             locked: false,
+            rtx_declined: false,
         };
 
         self.params.push(p);
