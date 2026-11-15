@@ -38,8 +38,8 @@ It also carries one upstream contributor's commit ahead of its release: `7a925e9
 retransmission without RTX via in-band resend on the main SSRC, by Jury Jaraševič
 ([str0m#980](https://github.com/algesten/str0m/pull/980)).
 
-It also carries four open upstream PRs by Marcus Asteborg, applied unchanged (tests: `b08bbbd4`;
-the PRs #1151 and #1152 carry their own):
+It also carries seven upstream PRs by Marcus Asteborg, all merged upstream, applied unchanged
+(tests: `b08bbbd4`; the other PRs carry their own):
 
 - `9f859afd` TWCC: skip zero-length run chunks instead of applying their status to the packets
   after them ([str0m#1143](https://github.com/algesten/str0m/pull/1143)).
@@ -51,6 +51,12 @@ the PRs #1151 and #1152 carry their own):
   and let a feedback report's sequence range run on past the end of the 64-bit space (the send
   side) ([str0m#1152](https://github.com/algesten/str0m/pull/1152)). `Twcc::into_iter`'s
   `last_seq` is upstream's `wrapping_add`, in place of this fork's `saturating_add`.
+- `901f213a` TWCC: cap feedback runs at 8191 packets
+  ([str0m#1150](https://github.com/algesten/str0m/pull/1150)).
+- `91da9812` VLA: a resolution of 65536 saturates instead of overflowing
+  ([str0m#1153](https://github.com/algesten/str0m/pull/1153)).
+- `d0cb7155` ICE: ignore remote candidates and STUN messages with port 0 or an unspecified IP
+  ([str0m#1148](https://github.com/algesten/str0m/pull/1148)).
 
 It also applies upstream fixes released in str0m 0.25.0, ahead of a rebase onto that release:
 
