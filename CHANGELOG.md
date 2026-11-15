@@ -15,6 +15,10 @@
     two codecs, or no payload type left to allocate) with an SDP error instead of panicking; the
     established payload parameters are kept when an update is rejected (str0m PR #1154, merged
     upstream)
+  * NACK without RTX: an answerer that declined RTX for a codec keeps ignoring the remote's RTX
+    for it after locking; a codec that locked without RTX only because the remote gave none is
+    checked against a later remote RTX payload type, which is rejected as a change to a locked
+    mapping
 
 # 0.25.1
 

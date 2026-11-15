@@ -31,7 +31,8 @@ str0m = { package = "sew-str0m", version = "0.25.1" }
   is resent in-band on the main SSRC with its original sequence number. This is
   [str0m PR #980][pr980] by Jury Jaraševič, an open upstream str0m PR, plus fixes for streams that
   mix payload types with and without RTX and for RED packets. `PayloadParams::set_resend`
-  configures or disables RTX.
+  configures or disables RTX. An answerer that declined RTX for a codec keeps ignoring the
+  remote's RTX for it, also on later m-lines and offers.
 - `StreamTx::set_nack_policy` and `NackPolicy`: per-packet limits on answering NACKs (resends per
   packet, hold-off, queue size), with `NackPolicy::default()`, `NackPolicy::new()` and `with_*`
   setters.
