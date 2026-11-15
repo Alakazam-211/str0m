@@ -1,6 +1,18 @@
 <!-- Changed by Alakazam Labs for sew-str0m; the fork's patches are listed in its README. -->
 # Unreleased
 
+# 0.25.3
+
+sew-str0m 0.25.3 and sew-str0m-is 0.12.2: sew-str0m 0.25.2 plus these changes, all merged
+upstream. sew-str0m-is has its own crates/is/CHANGELOG.md.
+
+Changes:
+
+  * TWCC: cap feedback runs at 8191 packets (str0m PR #1150)
+  * VLA: a resolution of 65536 saturates instead of overflowing (str0m PR #1153)
+  * ICE (sew-str0m-is): ignore remote candidates and STUN messages with port 0 or an
+    unspecified IP (str0m PR #1148)
+
 # 0.25.2
 
 sew-str0m 0.25.2: sew-str0m 0.25.1 plus these changes. sew-str0m-is stays 0.12.1 (unchanged).

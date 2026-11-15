@@ -9,7 +9,7 @@ library. Alakazam Labs publishes it for Sew, Alakazam Labs' chat and voice core:
 
 ```toml
 [dependencies]
-str0m = { package = "sew-str0m", version = "0.25.2" }
+str0m = { package = "sew-str0m", version = "0.25.3" }
 ```
 
 - The library names stay upstream's: `str0m` for this crate and `is` for its ICE crate
@@ -48,15 +48,20 @@ str0m = { package = "sew-str0m", version = "0.25.2" }
 - TWCC feedback parsing: a zero-length run chunk is skipped instead of taking over the statuses
   of the packets after it ([str0m PR #1143][pr1143]), and the deltas after a run of large deltas
   are read from the right offset, so a report too short for them is rejected
-  ([str0m PR #1144][pr1144]); both open upstream PRs.
+  ([str0m PR #1144][pr1144]); both merged upstream.
 - TWCC feedback reports are limited to 65535 packets ([str0m PR #1151][pr1151]), and a received
   TWCC sequence number that wraps back before 0 is ignored, while a report's sequence range runs
-  on past the end of the 64-bit space ([str0m PR #1152][pr1152]); both open upstream PRs. A
+  on past the end of the 64-bit space ([str0m PR #1152][pr1152]); both merged upstream. A
   report whose base sequence number is far ahead of the sent packets matches no send record and
   is dropped.
+- TWCC feedback runs are capped at 8191 packets ([str0m PR #1150][pr1150]), and a VLA
+  resolution of 65536 saturates instead of overflowing ([str0m PR #1153][pr1153]); both merged
+  upstream.
+- ICE: remote candidates and STUN messages with port 0 or an unspecified IP are ignored
+  ([str0m PR #1148][pr1148], merged upstream; in sew-str0m-is).
 
-`CHANGELOG.md`, in this package and the repository, lists the same changes under 0.25.1 and
-0.25.2.
+`CHANGELOG.md`, in this package and the repository, lists the same changes under 0.25.1,
+0.25.2 and 0.25.3.
 
 ## Defaults that differ from upstream
 
@@ -92,6 +97,9 @@ itself go to the [upstream issue tracker](https://github.com/algesten/str0m/issu
 [pr1144]: https://github.com/algesten/str0m/pull/1144
 [pr1151]: https://github.com/algesten/str0m/pull/1151
 [pr1152]: https://github.com/algesten/str0m/pull/1152
+[pr1150]: https://github.com/algesten/str0m/pull/1150
+[pr1153]: https://github.com/algesten/str0m/pull/1153
+[pr1148]: https://github.com/algesten/str0m/pull/1148
 [report]: https://github.com/Alakazam-211/str0m/security/advisories/new
 
 # str0m

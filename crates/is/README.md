@@ -10,10 +10,10 @@ API documentation: [docs.rs/sew-str0m-is][docs].
 
 ```toml
 [dependencies]
-is = { package = "sew-str0m-is", version = "0.12.1" }
+is = { package = "sew-str0m-is", version = "0.12.2" }
 ```
 
-Most users get it through sew-str0m (`str0m = { package = "sew-str0m", version = "0.25.1" }`).
+Most users get it through sew-str0m (`str0m = { package = "sew-str0m", version = "0.25.3" }`).
 
 - The library names stay upstream's: `is` for this crate and `str0m` for [sew-str0m][sew-str0m],
   so code says `use is::…` and `use str0m::…`.
@@ -26,6 +26,8 @@ Most users get it through sew-str0m (`str0m = { package = "sew-str0m", version =
 
 - ice-lite: a controlled agent sends on the highest-priority pair among those nominated in the
   last 3 s, else on the highest-priority nominated pair.
+- Remote candidates and STUN messages with port 0 or an unspecified IP (`0.0.0.0`, `::`,
+  `::ffff:0.0.0.0`) are ignored ([str0m PR #1148][pr1148], merged upstream).
 
 `CHANGELOG.md`, in this package, lists the changes by version.
 
@@ -44,6 +46,7 @@ go to the [upstream issue tracker](https://github.com/algesten/str0m/issues).
 [docs]: https://docs.rs/sew-str0m-is
 [repo]: https://github.com/Alakazam-211/str0m
 [report]: https://github.com/Alakazam-211/str0m/security/advisories/new
+[pr1148]: https://github.com/algesten/str0m/pull/1148
 
 # is
 
