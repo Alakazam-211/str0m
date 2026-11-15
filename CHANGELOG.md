@@ -23,6 +23,11 @@
   * VLA: a resolution of 65536 saturates instead of overflowing (str0m PR #1153, merged upstream)
   * ICE: ignore remote candidates and STUN messages with port 0 or an unspecified IP (str0m PR
     #1148, merged upstream)
+  * SDP: reject a remote description whose payload types conflict (one payload type claimed by
+    two codecs, or no payload type left to allocate) with an SDP error instead of panicking; the
+    established payload parameters are kept when an update is rejected (str0m PR #1154, merged
+    upstream; adapted for this line: one test hunk for a test module this line lacks is left out,
+    and the new session tests sit in this line's test module; the code is unchanged)
   * NACK without RTX: an answerer that declined RTX for a codec keeps ignoring the remote's RTX
     for it after locking; a codec that locked without RTX only because the remote gave none is
     checked against a later remote RTX payload type, which is rejected as a change to a locked

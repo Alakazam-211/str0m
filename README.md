@@ -38,9 +38,9 @@ It also carries one upstream contributor's commit ahead of its release: `7a925e9
 retransmission without RTX via in-band resend on the main SSRC, by Jury Jaraševič
 ([str0m#980](https://github.com/algesten/str0m/pull/980)).
 
-It also carries seven upstream PRs by Marcus Asteborg, all merged upstream (tests: `b08bbbd4`;
+It also carries eight upstream PRs by Marcus Asteborg, all merged upstream (tests: `b08bbbd4`;
 the other PRs carry their own). Each is applied unchanged except #1152, which differs by one
-line, noted below:
+line, and #1154, adapted in its tests; both are noted below:
 
 - `9f859afd` TWCC: skip zero-length run chunks instead of applying their status to the packets
   after them ([str0m#1143](https://github.com/algesten/str0m/pull/1143)).
@@ -58,6 +58,11 @@ line, noted below:
   ([str0m#1153](https://github.com/algesten/str0m/pull/1153)).
 - `d0cb7155` ICE: ignore remote candidates and STUN messages with port 0 or an unspecified IP
   ([str0m#1148](https://github.com/algesten/str0m/pull/1148)).
+- `d65d04d7` SDP: a remote description whose payload types conflict is rejected with an SDP
+  error instead of panicking, and the established payload parameters are kept
+  ([str0m#1154](https://github.com/algesten/str0m/pull/1154)). Adapted: the AMR-WB test hunk
+  is left out (this line has no AMR-WB test module) and the new session tests sit in this
+  line's test module; the non-test code is upstream's.
 
 It also applies upstream fixes released in str0m 0.25.0, ahead of a rebase onto that release:
 
