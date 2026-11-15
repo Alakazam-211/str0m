@@ -23,6 +23,10 @@
   * VLA: a resolution of 65536 saturates instead of overflowing (str0m PR #1153, merged upstream)
   * ICE: ignore remote candidates and STUN messages with port 0 or an unspecified IP (str0m PR
     #1148, merged upstream)
+  * NACK without RTX: an answerer that declined RTX for a codec keeps ignoring the remote's RTX
+    for it after locking; a codec that locked without RTX only because the remote gave none is
+    checked against a later remote RTX payload type, which is rejected as a change to a locked
+    mapping
 
 # 0.24.0
 
