@@ -1,16 +1,20 @@
 <!-- Changed by Alakazam Labs for sew-str0m; the fork's patches are listed in its README. -->
 # Unreleased
 
-  * TWCC: limit feedback reports to 65535 packets (str0m PR #1151, an open upstream PR)
+  * TWCC: limit feedback reports to 65535 packets (str0m PR #1151, merged upstream)
   * TWCC: ignore received sequence numbers that wrap back before 0 (the receive side), and let a
     feedback report's sequence range run on past the end of the 64-bit space (the send side; a
-    report whose first status matches no send record is still dropped) (str0m PR #1152, an open
-    upstream PR). On the send side it replaces this fork's saturating sequence arithmetic for
+    report whose first status matches no send record is still dropped) (str0m PR #1152, merged
+    upstream). On the send side it replaces this fork's saturating sequence arithmetic for
     peer TWCC reports
   * TWCC: cap feedback runs at 8191 packets (str0m PR #1150, merged upstream)
   * VLA: a resolution of 65536 saturates instead of overflowing (str0m PR #1153, merged upstream)
   * ICE: ignore remote candidates and STUN messages with port 0 or an unspecified IP (str0m PR
     #1148, merged upstream)
+  * SDP: reject a remote description whose payload types conflict (one payload type claimed by
+    two codecs, or no payload type left to allocate) with an SDP error instead of panicking; the
+    established payload parameters are kept when an update is rejected (str0m PR #1154, merged
+    upstream)
 
 # 0.25.1
 
