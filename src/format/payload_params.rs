@@ -118,6 +118,11 @@ pub struct PayloadParams {
     /// can't be further changed. If we make an OFFER for a sendonly, the parameters are only proposed
     /// and don't lock.
     pub(crate) locked: bool,
+
+    /// Whether these parameters were locked without RTX of our own (`resend` was `None` when
+    /// they locked), so a remote RTX payload type is never adopted for them, even after locking.
+    #[serde(default)]
+    pub(crate) rtx_declined: bool,
 }
 
 // we don't want to compare "locked"
@@ -179,6 +184,7 @@ impl PayloadParams {
 
             red: None,
             locked: false,
+            rtx_declined: false,
         }
     }
 
@@ -207,6 +213,7 @@ impl PayloadParams {
             fb_remb: false,
             red: None,
             locked: false,
+            rtx_declined: false,
         }
     }
 
@@ -772,8 +779,10 @@ impl PayloadParams {
         // The RTX payload type (RFC 4588 §8.6) is a media format, and for unicast
         // the answerer selects formats (RFC 3264 §6.1, Unicast Streams) "from
         // amongst those listed in the offer". So if we didn't offer RTX for this
-        // codec, don't adopt the remote's RTX PT.
-        if self.resend.is_none() {
+        // codec, don't adopt the remote's RTX PT. Once locked, that holds only for parameters
+        // locked without RTX of our own: a locked `resend` of `None` that came from the remote
+        // is checked against the remote's RTX like any other locked value.
+        if self.resend.is_none() && (!self.locked || self.rtx_declined) {
             remote_rtx = None;
         }
 
@@ -868,6 +877,9 @@ impl PayloadParams {
                     }
                 }
             }
+
+            // Remember whether we lock without RTX of our own (see `rtx_declined`).
+            self.rtx_declined = self.resend.is_none();
 
             // Lock down the RTX PT
             if let Some(rtx) = remote_rtx {
