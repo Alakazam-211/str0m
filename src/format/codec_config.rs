@@ -148,6 +148,7 @@ impl CodecConfig {
             fb_remb,
             red: None,
             locked: false,
+            rtx_declined: false,
         };
 
         self.params.push(p);

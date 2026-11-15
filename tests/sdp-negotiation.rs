@@ -1685,3 +1685,37 @@ fn h264(pt: u8) -> PayloadParams {
         },
     )
 }
+
+// Answerer has RTX disabled; the offer carries RTX on two video m-lines, and a later offer
+// repeats it. The second m-line and the re-offer meet locked parameters without RTX.
+#[test]
+fn rtx_disabled_answerer_accepts_rtx_on_every_mline_and_reoffer() {
+    init_log();
+    init_crypto_default();
+
+    let mut l = build_params(info_span!("L"), &[vp8_rtx(100, 101)]);
+    let mut r = build_params(info_span!("R"), &[vp8(96)]);
+
+    let (offer, pending) = l.span.in_scope(|| {
+        let mut change = l.rtc.sdp_api();
+        change.add_media(MediaKind::Video, Direction::SendRecv, None, None, None);
+        change.add_media(MediaKind::Video, Direction::SendRecv, None, None, None);
+        change.apply().unwrap()
+    });
+    let answer = r
+        .span
+        .in_scope(|| r.rtc.sdp_api().accept_offer(offer))
+        .expect("first offer");
+    l.span
+        .in_scope(|| l.rtc.sdp_api().accept_answer(pending, answer))
+        .unwrap();
+
+    let (offer, _pending) = l.span.in_scope(|| {
+        let mut change = l.rtc.sdp_api();
+        change.add_media(MediaKind::Video, Direction::SendRecv, None, None, None);
+        change.apply().unwrap()
+    });
+    r.span
+        .in_scope(|| r.rtc.sdp_api().accept_offer(offer))
+        .expect("re-offer");
+}
