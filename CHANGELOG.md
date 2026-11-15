@@ -3,8 +3,9 @@
 
 # 0.25.3
 
-sew-str0m 0.25.3 and sew-str0m-is 0.12.2: sew-str0m 0.25.2 plus these changes, all merged
-upstream. sew-str0m-is has its own crates/is/CHANGELOG.md.
+sew-str0m 0.25.3 and sew-str0m-is 0.12.2: sew-str0m 0.25.2 plus these changes; the str0m PRs
+listed are merged upstream, and the NACK-without-RTX entry is this fork's own. sew-str0m-is has
+its own crates/is/CHANGELOG.md.
 
 Changes:
 
@@ -18,7 +19,8 @@ Changes:
   * NACK without RTX: an answerer that declined RTX for a codec keeps ignoring the remote's RTX
     for it after locking; a codec that locked without RTX only because the remote gave none is
     checked against a later remote RTX payload type, which is rejected as a change to a locked
-    mapping
+    mapping. `PayloadParams` saved by an earlier version reload with RTX not marked as declined;
+    renegotiate rather than restore saved negotiation state across an upgrade
 
 # 0.25.2
 
