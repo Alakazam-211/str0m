@@ -33,6 +33,9 @@ str0m's licence and credits are unchanged. Each line names the fork commit.
 - `5afa9e40` TWCC: saturating sequence arithmetic for peer reports (on the send side, replaced
   by upstream PR #1152's wrapping iteration, below); a report whose base is far
   ahead of the last sent packet matches no send record and is dropped (test: `bbbcaf25`).
+- `37120ee7` NACK without RTX: an answerer that declined RTX for a codec keeps ignoring the
+  remote's RTX for it after locking, also on later m-lines and offers; a codec locked without
+  RTX because the remote offered none rejects a later conflicting remote RTX payload type.
 
 It also carries one upstream contributor's commit ahead of its release: `7a925e9c`, NACK
 retransmission without RTX via in-band resend on the main SSRC, by Jury Jaraševič
