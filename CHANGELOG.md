@@ -23,11 +23,18 @@
   * VLA: a resolution of 65536 saturates instead of overflowing (str0m PR #1153, merged upstream)
   * ICE: ignore remote candidates and STUN messages with port 0 or an unspecified IP (str0m PR
     #1148, merged upstream)
-  * SDP: a later remote description whose payload type conflicts with one already negotiated,
+  * SDP: a remote description whose payload type conflicts with one already negotiated,
     or that leaves no payload type to allocate, is warned about and ignored instead of
     refused; locked payload types and their codec parameters, the negotiated RTP header
     extension IDs and each media's extension set stay as first negotiated (str0m PR #1159, merged
     upstream; it replaces str0m PR #1154, which upstream reverted)
+  * SDP: a remote description's DTLS fingerprint, DTLS setup role and ICE credentials are
+    taken from the BUNDLE-tag media section first, with the session-level values as defaults
+    (before, a session-level value took precedence); a missing ICE username or password is
+    taken from the session level on its own; when every media section is stopped, the ICE
+    username and password come from one section, not from two; and only the `a=group:BUNDLE`
+    line, not another `a=group` line, is checked against the m-lines (str0m PR #1158, merged
+    upstream)
   * NACK without RTX: an answerer that declined RTX for a codec keeps ignoring the remote's RTX
     for it after locking; a codec that locked without RTX only because the remote gave none is
     checked against a later remote RTX payload type like any other locked mapping (a change is

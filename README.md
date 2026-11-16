@@ -35,16 +35,18 @@ str0m's licence and credits are unchanged. Each line names the fork commit.
   ahead of the last sent packet matches no send record and is dropped (test: `bbbcaf25`).
 - `37120ee7` NACK without RTX: an answerer that declined RTX for a codec keeps ignoring the
   remote's RTX for it after locking, also on later m-lines and offers; a codec locked without
-  RTX because the remote offered none rejects a later conflicting remote RTX payload type.
+  RTX because the remote offered none checks a later remote RTX payload type like any other
+  locked mapping (a change is warned about and ignored).
 
 It also carries one upstream contributor's commit ahead of its release: `7a925e9c`, NACK
 retransmission without RTX via in-band resend on the main SSRC, by Jury Jaraševič
 ([str0m#980](https://github.com/algesten/str0m/pull/980)).
 
-It also carries eight upstream PRs by Marcus Asteborg and one by Martin Algesten, all merged
-upstream (tests: `b08bbbd4`; the other PRs carry their own), and upstream's revert of one of
-them (#1154). Each is applied unchanged except #1152, which differs by one line, and #1159,
-whose test leaves out AMR-WB; both are noted below:
+It also carries eight upstream PRs by Marcus Asteborg, one by Martin Algesten and one by
+Yasunobu, all merged upstream (tests: `b08bbbd4`; the other PRs carry their own), and upstream's
+revert of one of them (#1154). Each is applied unchanged except #1152, which differs by one
+line, and #1159 and #1158, whose tests are adapted; all three are noted below. Upstream's revert
+of #1154 has no AMR-WB test hunk here, because this line's port of #1154 never had one:
 
 - `9f859afd` TWCC: skip zero-length run chunks instead of applying their status to the packets
   after them ([str0m#1143](https://github.com/algesten/str0m/pull/1143)).
@@ -64,12 +66,19 @@ whose test leaves out AMR-WB; both are noted below:
   ([str0m#1148](https://github.com/algesten/str0m/pull/1148)).
 - `d65d04d7` SDP: [str0m#1154](https://github.com/algesten/str0m/pull/1154), reverted by
   `0631878f` as upstream reverted it (upstream `892e73bd`).
-- `da1f7ca4` SDP: a later remote description whose payload type conflicts with one already
+- `da1f7ca4` SDP: a remote description whose payload type conflicts with one already
   negotiated, or that leaves no payload type to allocate, is warned about and ignored instead
   of refused, and the negotiated payload types, codec parameters and RTP header extension IDs
   stay as first negotiated ([str0m#1159](https://github.com/algesten/str0m/pull/1159)).
   Adapted (`9bc0ef13`): its locked-parameters test leaves out AMR-WB, which this line lacks;
   the code is upstream's.
+- `658966bf` SDP: a remote description's DTLS fingerprint, DTLS setup role and ICE
+  credentials are taken from the BUNDLE-tag media section first, with the session-level values
+  as defaults, and only the `a=group:BUNDLE` line is checked against the m-lines
+  ([str0m#1158](https://github.com/algesten/str0m/pull/1158)). Adapted (`bae3f469`): its DTLS
+  test is in a file of its own, and its tests expect this line to refuse an SDP whose every
+  m-line is stopped (an empty BUNDLE group, which this line does not accept); the code is
+  upstream's.
 
 It also applies upstream fixes released in str0m 0.25.0, ahead of a rebase onto that release:
 
