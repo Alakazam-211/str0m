@@ -1831,8 +1831,11 @@ mod test {
         ] {
             let source = source.replacen("m=audio", &format!("{previous}m=audio"), 1);
             let sdp = Sdp::parse(&source).unwrap();
-            sdp.assert_consistency().unwrap();
-            assert_eq!(sdp.bundle_mids(), Some([].as_slice()));
+            // Every m-line is stopped, so this is an SDP whose BUNDLE group is
+            // empty. This line refuses it ("Session attribute a=group missing"): upstream
+            // accepts it since 8712adb8 and 6551e9f8, which this line does not carry.
+            // The transport accessors still read the stopped section.
+            assert!(sdp.assert_consistency().is_err());
             let creds = sdp.ice_creds().unwrap();
             assert_eq!(creds.ufrag, "stopped");
             assert_eq!(creds.pass, "stopped-password-12345678");

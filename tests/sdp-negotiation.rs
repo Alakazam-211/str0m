@@ -507,6 +507,14 @@ fn stop_last_media_after_first_section_loses_transport_attributes() {
             rewritten.push_str("\r\n");
         }
         let offer = SdpOffer::from_sdp_string(&rewritten).unwrap();
+        if mid == last {
+            // Stopping the last m-line leaves an SDP whose BUNDLE group is
+            // empty. This line refuses it ("Session attribute a=group missing"): upstream
+            // accepts it since 8712adb8 and 6551e9f8, which this line does not carry.
+            let err = r.sdp_api().accept_offer(offer).unwrap_err();
+            assert!(format!("{err:?}").contains("a=group missing"), "{err:?}");
+            continue;
+        }
         let answer = r.sdp_api().accept_offer(offer).unwrap();
         l.sdp_api().accept_answer(pending, answer).unwrap();
         assert!(r.media(mid).unwrap().stopped());
@@ -551,6 +559,14 @@ fn stopped_media_ice_credentials_are_not_combined_across_sections() {
             rewritten.push_str("\r\n");
         }
         let offer = SdpOffer::from_sdp_string(&rewritten).unwrap();
+        if mid == last {
+            // Stopping the last m-line leaves an SDP whose BUNDLE group is
+            // empty. This line refuses it ("Session attribute a=group missing"): upstream
+            // accepts it since 8712adb8 and 6551e9f8, which this line does not carry.
+            let err = r.sdp_api().accept_offer(offer).unwrap_err();
+            assert!(format!("{err:?}").contains("a=group missing"), "{err:?}");
+            continue;
+        }
         let answer = r.sdp_api().accept_offer(offer).unwrap();
         l.sdp_api().accept_answer(pending, answer).unwrap();
         assert!(r.media(mid).unwrap().stopped());
