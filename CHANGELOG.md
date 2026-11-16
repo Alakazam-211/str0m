@@ -1,6 +1,27 @@
 <!-- Changed by Alakazam Labs for sew-str0m; the fork's patches are listed in its README. -->
 # Unreleased
 
+# 0.25.5
+
+sew-str0m 0.25.5 and sew-str0m-is 0.12.3: sew-str0m 0.25.4 and sew-str0m-is 0.12.2 plus these
+changes. sew-str0m-is has its own crates/is/CHANGELOG.md.
+
+Changes:
+
+  * SDP: a remote description's DTLS fingerprint, DTLS setup role and ICE credentials are
+    taken from the BUNDLE-tag media section first, with the session-level values as defaults
+    (before, a session-level value took precedence); a missing ICE username or password is
+    taken from the session level on its own; when every media section is stopped, the ICE
+    username and password come from one section, not from two; and only the `a=group:BUNDLE`
+    line, not another `a=group` line, is checked against the m-lines (str0m PR #1158, merged
+    upstream)
+  * Package: the sew-str0m package holds the library source, the SDP sample its unit tests
+    read, the README, this CHANGELOG, the licence files and SECURITY.md. Upstream's tests and
+    test data, examples, sample keys, logo, README template and CI and editor files are no
+    longer in it; they stay in the repository
+  * README: SECURITY.md is linked where the fork keeps it, and the README says where to report
+    problems, as the fork has no public issue tracker
+
 # 0.25.4
 
 sew-str0m 0.25.4: sew-str0m 0.25.3 with upstream str0m PR #1159 in place of #1154, as upstream main
@@ -8,7 +29,7 @@ has them. sew-str0m-is stays 0.12.2 (unchanged).
 
 Changes:
 
-  * SDP: a later remote description whose payload type conflicts with one already negotiated,
+  * SDP: a remote description whose payload type conflicts with one already negotiated,
     or that leaves no payload type to allocate, is warned about and ignored instead of
     refused; locked payload types and their codec parameters, the negotiated RTP header
     extension IDs and each media's extension set stay as first negotiated (str0m PR #1159).
@@ -31,7 +52,7 @@ Changes:
   * ICE (sew-str0m-is): ignore remote candidates and STUN messages with port 0 or an
     unspecified IP (str0m PR #1148)
   * SDP: reject a remote description whose payload types conflict (one payload type claimed by
-    two codecs, or no payload type left to allocate) with an SDP error instead of panicking; the
+    two codecs, or no payload type left to allocate) with an SDP error; the
     established payload parameters are kept when an update is rejected (str0m PR #1154)
   * NACK without RTX: an answerer that declined RTX for a codec keeps ignoring the remote's RTX
     for it after locking; a codec that locked without RTX only because the remote gave none is

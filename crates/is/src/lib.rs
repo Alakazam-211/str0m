@@ -2,10 +2,10 @@
 //! **This is sew-str0m-is, a fork of `is`, the ICE crate of
 //! [str0m](https://github.com/algesten/str0m)**, that Alakazam Labs publishes with sew-str0m for
 //! Sew, Alakazam Labs' chat and voice core. Depend on it as
-//! `is = { package = "sew-str0m-is", version = "0.12.2" }`; the library name stays `is`. It is
+//! `is = { package = "sew-str0m-is", version = "0.12.3" }`; the library name stays `is`. It is
 //! used instead of upstream `is`; a build that also pulls in upstream `is` gets both, and their
 //! types do not mix. The crate's [README](https://crates.io/crates/sew-str0m-is) lists the
-//! patches and how to report security problems privately. The rest of this page is upstream's documentation.
+//! patches and where to report problems. The rest of this page is upstream's documentation.
 //!
 //! # is -- ICE in Sans-IO style
 //!
@@ -101,6 +101,7 @@
 //! [design]: https://github.com/algesten/str0m/blob/main/docs/ice.md
 
 // Avoid rewriting existing code: nested conditions are often more readable than long if-chains.
+#![forbid(unsafe_code)]
 #![allow(clippy::collapsible_if)]
 #![allow(clippy::new_without_default)]
 #![allow(clippy::bool_to_int_with_if)]

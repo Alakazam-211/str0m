@@ -9,7 +9,7 @@ library. Alakazam Labs publishes it for Sew, Alakazam Labs' chat and voice core:
 
 ```toml
 [dependencies]
-str0m = { package = "sew-str0m", version = "0.25.4" }
+str0m = { package = "sew-str0m", version = "0.25.5" }
 ```
 
 - The library names stay upstream's: `str0m` for this crate and `is` for its ICE crate
@@ -60,14 +60,18 @@ str0m = { package = "sew-str0m", version = "0.25.4" }
   upstream.
 - ICE: remote candidates and STUN messages with port 0 or an unspecified IP are ignored
   ([str0m PR #1148][pr1148], merged upstream; in sew-str0m-is).
-- SDP: a later remote description whose payload type conflicts with one already negotiated, or
-  that leaves no payload type to allocate, is warned about and ignored instead of refused, and
+- SDP: a remote description whose payload type conflicts with one already negotiated, or that
+  leaves no payload type to allocate, is warned about and ignored instead of refused, and
   the negotiated payload types, codec parameters and RTP header extension IDs stay as first
   negotiated ([str0m PR #1159][pr1159], merged upstream). It replaces [str0m PR #1154][pr1154],
   which upstream reverted.
+- SDP: a remote description's DTLS fingerprint, DTLS setup role and ICE credentials are taken
+  from the BUNDLE-tag media section first, with the session-level values as defaults, and only
+  the `a=group:BUNDLE` line is checked against the m-lines ([str0m PR #1158][pr1158], merged
+  upstream).
 
 `CHANGELOG.md`, in this package and the repository, lists the same changes under 0.25.1,
-0.25.2, 0.25.3 and 0.25.4.
+0.25.2, 0.25.3, 0.25.4 and 0.25.5.
 
 ## Defaults that differ from upstream
 
@@ -85,10 +89,10 @@ These change behaviour for every user of the crate, not only for code that calls
 
 ## Security
 
-Report security problems in this fork privately, through
-[GitHub private vulnerability reporting][report] on this repository, as `SECURITY.md` (in this
-package and the repository root) describes. Do not open a public issue. Bugs in upstream str0m
-itself go to the [upstream issue tracker](https://github.com/algesten/str0m/issues).
+[SECURITY.md][policy] (also in this package) says how to report a problem in this fork
+privately. The fork has no public issue tracker, so report other problems with its patches the
+same way. Bugs in upstream str0m itself go to the
+[upstream issue tracker](https://github.com/algesten/str0m/issues).
 
 ---
 
@@ -108,7 +112,8 @@ itself go to the [upstream issue tracker](https://github.com/algesten/str0m/issu
 [pr1148]: https://github.com/algesten/str0m/pull/1148
 [pr1154]: https://github.com/algesten/str0m/pull/1154
 [pr1159]: https://github.com/algesten/str0m/pull/1159
-[report]: https://github.com/Alakazam-211/str0m/security/advisories/new
+[pr1158]: https://github.com/algesten/str0m/pull/1158
+[policy]: https://github.com/Alakazam-211/str0m/blob/sew-crates-io-0.25-next-6/SECURITY.md
 
 # str0m
 

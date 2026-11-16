@@ -1,7 +1,7 @@
 # Changed by Alakazam Labs for sew-str0m-is; the fork's patches are listed in its README.
 [package]
 name = "sew-str0m-is"
-version = "0.12.2"
+version = "0.12.3"
 authors = ["Martin Algesten <martin@algesten.se>", "Thomas Eizinger <thomas@eizinger.io>", "Alakazam Labs"]
 description = "Fork of str0m (https://github.com/algesten/str0m) with Sew's patches. ICE (Interactive Connectivity Establishment) in Sans-IO style"
 license = "MIT OR Apache-2.0"
@@ -11,6 +11,15 @@ documentation = "https://docs.rs/sew-str0m-is"
 readme = "README.md"
 edition = "2024"
 rust-version = "1.89.0"
+# The published package: the library, its README, CHANGELOG and licence files.
+include = [
+  "/src/",
+  "/Cargo.toml",
+  "/README.md",
+  "/CHANGELOG.md",
+  "/LICENSE-MIT.txt",
+  "/LICENSE-APACHE.txt",
+]
 
 # The library keeps upstream's name (is); the package is renamed.
 [lib]
