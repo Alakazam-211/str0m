@@ -41,9 +41,10 @@ It also carries one upstream contributor's commit ahead of its release: `7a925e9
 retransmission without RTX via in-band resend on the main SSRC, by Jury Jaraševič
 ([str0m#980](https://github.com/algesten/str0m/pull/980)).
 
-It also carries eight upstream PRs by Marcus Asteborg, all merged upstream (tests: `b08bbbd4`;
-the other PRs carry their own). Each is applied unchanged except #1152, which differs by one
-line, and #1154, adapted in its tests; both are noted below:
+It also carries eight upstream PRs by Marcus Asteborg and one by Martin Algesten, all merged
+upstream (tests: `b08bbbd4`; the other PRs carry their own), and upstream's revert of one of
+them (#1154). Each is applied unchanged except #1152, which differs by one line, and #1159,
+whose test leaves out AMR-WB; both are noted below:
 
 - `9f859afd` TWCC: skip zero-length run chunks instead of applying their status to the packets
   after them ([str0m#1143](https://github.com/algesten/str0m/pull/1143)).
@@ -61,11 +62,14 @@ line, and #1154, adapted in its tests; both are noted below:
   ([str0m#1153](https://github.com/algesten/str0m/pull/1153)).
 - `d0cb7155` ICE: ignore remote candidates and STUN messages with port 0 or an unspecified IP
   ([str0m#1148](https://github.com/algesten/str0m/pull/1148)).
-- `d65d04d7` SDP: a remote description whose payload types conflict is rejected with an SDP
-  error instead of panicking, and the established payload parameters are kept
-  ([str0m#1154](https://github.com/algesten/str0m/pull/1154)). Adapted: the AMR-WB test hunk
-  is left out (this line has no AMR-WB test module) and the new session tests sit in this
-  line's test module; the non-test code is upstream's.
+- `d65d04d7` SDP: [str0m#1154](https://github.com/algesten/str0m/pull/1154), reverted by
+  `0631878f` as upstream reverted it (upstream `892e73bd`).
+- `da1f7ca4` SDP: a later remote description whose payload type conflicts with one already
+  negotiated, or that leaves no payload type to allocate, is warned about and ignored instead
+  of refused, and the negotiated payload types, codec parameters and RTP header extension IDs
+  stay as first negotiated ([str0m#1159](https://github.com/algesten/str0m/pull/1159)).
+  Adapted (`9bc0ef13`): its locked-parameters test leaves out AMR-WB, which this line lacks;
+  the code is upstream's.
 
 It also applies upstream fixes released in str0m 0.25.0, ahead of a rebase onto that release:
 

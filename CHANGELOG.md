@@ -23,16 +23,17 @@
   * VLA: a resolution of 65536 saturates instead of overflowing (str0m PR #1153, merged upstream)
   * ICE: ignore remote candidates and STUN messages with port 0 or an unspecified IP (str0m PR
     #1148, merged upstream)
-  * SDP: reject a remote description whose payload types conflict (one payload type claimed by
-    two codecs, or no payload type left to allocate) with an SDP error instead of panicking; the
-    established payload parameters are kept when an update is rejected (str0m PR #1154, merged
-    upstream; adapted for this line: one test hunk for a test module this line lacks is left out,
-    and the new session tests sit in this line's test module; the code is unchanged)
+  * SDP: a later remote description whose payload type conflicts with one already negotiated,
+    or that leaves no payload type to allocate, is warned about and ignored instead of
+    refused; locked payload types and their codec parameters, the negotiated RTP header
+    extension IDs and each media's extension set stay as first negotiated (str0m PR #1159, merged
+    upstream; it replaces str0m PR #1154, which upstream reverted)
   * NACK without RTX: an answerer that declined RTX for a codec keeps ignoring the remote's RTX
     for it after locking; a codec that locked without RTX only because the remote gave none is
-    checked against a later remote RTX payload type, which is rejected as a change to a locked
-    mapping. `PayloadParams` saved by an earlier version reload with RTX not marked as declined;
-    renegotiate rather than restore saved negotiation state across an upgrade
+    checked against a later remote RTX payload type like any other locked mapping (a change is
+    warned about and ignored). `PayloadParams` saved by an earlier version reload with RTX not
+    marked as declined; renegotiate rather than restore saved negotiation state across an
+    upgrade
 
 # 0.24.0
 
