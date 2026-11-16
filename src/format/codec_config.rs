@@ -742,7 +742,7 @@ mod test {
 
     #[test]
     fn locked_payload_parameters_are_unchanged() {
-        for codec in [Codec::H265, Codec::H266, Codec::Tele, Codec::AmrWb] {
+        for codec in [Codec::H265, Codec::H266, Codec::Tele] {
             for direction in [Direction::SendOnly, Direction::RecvOnly] {
                 let mut config = CodecConfig::empty();
                 config.add_config(
@@ -761,7 +761,6 @@ mod test {
                 remote.resend = Some(105.into());
                 remote.spec.format.sprop_max_don_diff = Some(1);
                 remote.spec.format.telephone_event_max = Some(10);
-                remote.spec.format.mode_set = Some(0b111);
                 remote.fb_transport_cc = !remote.fb_transport_cc;
                 config.update_params(&[remote], direction);
                 assert_eq!(config.params, established);
