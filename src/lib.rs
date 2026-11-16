@@ -5,7 +5,8 @@
 //! name stays `str0m`. It is used instead of upstream str0m; a build that also pulls in
 //! upstream str0m gets both, and their types do not mix. It works with upstream's `str0m-*`
 //! backend crates. The crate's [README](https://crates.io/crates/sew-str0m) lists the patches
-//! and the defaults that differ from upstream, and how to report security problems privately. The rest of this page is upstream's documentation.
+//! and the defaults that differ from upstream, and where to report problems. The rest of this
+//! page is upstream's documentation.
 //!
 //! This build is the fork's working line, under upstream's name and version (`str0m`
 //! 0.25.0); the published sew-str0m 0.25.1 is built from the fork's publishing branch, with

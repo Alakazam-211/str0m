@@ -1,3 +1,4 @@
+// Changed by Alakazam Labs for sew-str0m; the fork's patches are listed in its README.
 #![allow(clippy::single_match)]
 
 use combine::{EasyParser, Parser};
