@@ -38,10 +38,14 @@ Most users get it through sew-str0m (`str0m = { package = "sew-str0m", version =
 
 ## Security
 
-[SECURITY.md][policy], in the fork's [repository][repo], says how to report a problem in this
-fork privately. The fork has no public issue tracker, so report other problems with its
-patches the same way. Bugs in upstream str0m or `is` go to the
-[upstream issue tracker](https://github.com/algesten/str0m/issues).
+[SECURITY.md][policy] in the sew-crates repository is the policy for this fork: it says
+how to report a problem privately.
+
+## Bug reports
+
+Report bugs in our patches at https://github.com/Alakazam-211/sew-crates/issues with the
+`crate:sew-str0m` label (`crate:sew-str0m-is` for that crate); bugs in str0m itself go
+upstream to [algesten/str0m](https://github.com/algesten/str0m/issues).
 
 ---
 
@@ -49,8 +53,7 @@ patches the same way. Bugs in upstream str0m or `is` go to the
 
 [sew-str0m]: https://crates.io/crates/sew-str0m
 [docs]: https://docs.rs/sew-str0m-is
-[repo]: https://github.com/Alakazam-211/str0m
-[policy]: https://github.com/Alakazam-211/str0m/blob/sew/0.25-next-6/SECURITY.md
+[policy]: https://github.com/Alakazam-211/sew-crates/blob/main/SECURITY.md
 [pr1148]: https://github.com/algesten/str0m/pull/1148
 
 # is
