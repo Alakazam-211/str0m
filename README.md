@@ -89,10 +89,14 @@ These change behaviour for every user of the crate, not only for code that calls
 
 ## Security
 
-[SECURITY.md][policy] (also in this package) says how to report a problem in this fork
-privately. The fork has no public issue tracker, so report other problems with its patches the
-same way. Bugs in upstream str0m itself go to the
-[upstream issue tracker](https://github.com/algesten/str0m/issues).
+[SECURITY.md][policy] in the sew-crates repository is the policy for this fork: it says
+how to report a problem privately. The `SECURITY.md` in this package points to it.
+
+## Bug reports
+
+Report bugs in our patches at https://github.com/Alakazam-211/sew-crates/issues with the
+`crate:sew-str0m` label (`crate:sew-str0m-is` for that crate); bugs in str0m itself go
+upstream to [algesten/str0m](https://github.com/algesten/str0m/issues).
 
 ---
 
@@ -113,7 +117,7 @@ same way. Bugs in upstream str0m itself go to the
 [pr1154]: https://github.com/algesten/str0m/pull/1154
 [pr1159]: https://github.com/algesten/str0m/pull/1159
 [pr1158]: https://github.com/algesten/str0m/pull/1158
-[policy]: https://github.com/Alakazam-211/str0m/blob/sew-crates-io-0.25-next-6/SECURITY.md
+[policy]: https://github.com/Alakazam-211/sew-crates/blob/main/SECURITY.md
 
 # str0m
 

@@ -7,8 +7,9 @@ sew-str0m 0.25.5.
 
   * The crate forbids unsafe code (`#![forbid(unsafe_code)]`); it had none
   * The package lists its files (`include`); they are the same files as in 0.12.2
-  * README: it names sew-str0m 0.25.5, links SECURITY.md where the fork keeps it, and says
-    where to report problems, as the fork has no public issue tracker
+  * README: it names sew-str0m 0.25.5, points to the Sew crates policy (SECURITY.md in the
+    sew-crates repository) and says where to report bugs in the fork's patches: the
+    sew-crates issue tracker, with the `crate:sew-str0m-is` label
 
 # 0.12.2
 

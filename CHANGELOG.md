@@ -19,8 +19,9 @@ Changes:
     read, the README, this CHANGELOG, the licence files and SECURITY.md. Upstream's tests and
     test data, examples, sample keys, logo, README template and CI and editor files are no
     longer in it; they stay in the repository
-  * README: SECURITY.md is linked where the fork keeps it, and the README says where to report
-    problems, as the fork has no public issue tracker
+  * README and SECURITY.md: they point to the Sew crates policy (SECURITY.md in the sew-crates
+    repository), and the README says where to report bugs in the fork's patches: the
+    sew-crates issue tracker, with the `crate:sew-str0m` label
 
 # 0.25.4
 
