@@ -89,6 +89,13 @@ It also applies upstream fixes released in str0m 0.25.0, ahead of a rebase onto 
   dimpl 0.9.0 glue builds on.
 - `86872d6f` A test that a DTLS client sending an empty Certificate does not complete the handshake.
 
+The policy for reporting a problem in this fork privately is [SECURITY.md](https://github.com/Alakazam-211/sew-crates/blob/main/SECURITY.md) in
+the sew-crates repository.
+
+Report bugs in our patches at https://github.com/Alakazam-211/sew-crates/issues with the
+`crate:sew-str0m` label (`crate:sew-str0m-is` for that crate); bugs in str0m itself go
+upstream to [algesten/str0m](https://github.com/algesten/str0m/issues).
+
 ## Join us
 
 We are discussing str0m things on Discord. Join us using this [invitation link][discord].
