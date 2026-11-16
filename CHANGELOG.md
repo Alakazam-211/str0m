@@ -1,6 +1,23 @@
 <!-- Changed by Alakazam Labs for sew-str0m; the fork's patches are listed in its README. -->
 # Unreleased
 
+# 0.25.4
+
+sew-str0m 0.25.4: sew-str0m 0.25.3 with upstream str0m PR #1159 in place of #1154, as upstream main
+has them. sew-str0m-is stays 0.12.2 (unchanged).
+
+Changes:
+
+  * SDP: a later remote description whose payload type conflicts with one already negotiated,
+    or that leaves no payload type to allocate, is warned about and ignored instead of
+    refused; locked payload types and their codec parameters, the negotiated RTP header
+    extension IDs and each media's extension set stay as first negotiated (str0m PR #1159).
+    It replaces str0m PR #1154 (in 0.25.3), which upstream reverted: a conflicting payload type
+    that 0.25.3 refused with an SDP error is now warned about and ignored, as upstream does.
+    The NACK-without-RTX change of 0.25.3 still applies: a codec that locked without RTX only
+    because the remote gave none is checked against a later remote RTX payload type like any
+    other locked mapping (a change is warned about and ignored)
+
 # 0.25.3
 
 sew-str0m 0.25.3 and sew-str0m-is 0.12.2: sew-str0m 0.25.2 plus these changes; the str0m PRs

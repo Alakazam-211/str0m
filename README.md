@@ -9,7 +9,7 @@ library. Alakazam Labs publishes it for Sew, Alakazam Labs' chat and voice core:
 
 ```toml
 [dependencies]
-str0m = { package = "sew-str0m", version = "0.25.3" }
+str0m = { package = "sew-str0m", version = "0.25.4" }
 ```
 
 - The library names stay upstream's: `str0m` for this crate and `is` for its ICE crate
@@ -60,12 +60,14 @@ str0m = { package = "sew-str0m", version = "0.25.3" }
   upstream.
 - ICE: remote candidates and STUN messages with port 0 or an unspecified IP are ignored
   ([str0m PR #1148][pr1148], merged upstream; in sew-str0m-is).
-- SDP: a remote description whose payload types conflict is rejected with an SDP error instead
-  of panicking, and the established payload parameters are kept ([str0m PR #1154][pr1154],
-  merged upstream).
+- SDP: a later remote description whose payload type conflicts with one already negotiated, or
+  that leaves no payload type to allocate, is warned about and ignored instead of refused, and
+  the negotiated payload types, codec parameters and RTP header extension IDs stay as first
+  negotiated ([str0m PR #1159][pr1159], merged upstream). It replaces [str0m PR #1154][pr1154],
+  which upstream reverted.
 
 `CHANGELOG.md`, in this package and the repository, lists the same changes under 0.25.1,
-0.25.2 and 0.25.3.
+0.25.2, 0.25.3 and 0.25.4.
 
 ## Defaults that differ from upstream
 
@@ -105,6 +107,7 @@ itself go to the [upstream issue tracker](https://github.com/algesten/str0m/issu
 [pr1153]: https://github.com/algesten/str0m/pull/1153
 [pr1148]: https://github.com/algesten/str0m/pull/1148
 [pr1154]: https://github.com/algesten/str0m/pull/1154
+[pr1159]: https://github.com/algesten/str0m/pull/1159
 [report]: https://github.com/Alakazam-211/str0m/security/advisories/new
 
 # str0m

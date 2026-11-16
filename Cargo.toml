@@ -1,7 +1,7 @@
 # Changed by Alakazam Labs for sew-str0m; the fork's patches are listed in its README.
 [package]
 name = "sew-str0m"
-version = "0.25.3"
+version = "0.25.4"
 authors = ["Martin Algesten <martin@algesten.se>", "Hugo Tunius <h@tunius.se>", "Davide Bertola <dade@dadeb.it>", "Alakazam Labs"]
 description = "Fork of str0m (https://github.com/algesten/str0m) with Sew's patches. WebRTC library in Sans-IO style"
 license = "MIT OR Apache-2.0"
@@ -47,7 +47,7 @@ exclude = [
 
 [workspace.dependencies]
 # This fork's crates keep upstream's library names (str0m, is), so code says `str0m::…`.
-str0m = { package = "sew-str0m", version = "0.25.3", path = ".", default-features = false }
+str0m = { package = "sew-str0m", version = "0.25.4", path = ".", default-features = false }
 is = { package = "sew-str0m-is", version = "0.12.2", path = "crates/is", default-features = false }
 # Upstream's crates, from crates.io (str0m 0.25.0's releases).
 str0m-proto = { version = "0.8.0", default-features = false }
@@ -107,7 +107,7 @@ regex = "1.11.1"
 rand = "0.9.0"
 
 # The library keeps upstream's name, so code says `str0m::…`; dependents rename the package:
-# `str0m = { package = "sew-str0m", version = "0.25.3" }`.
+# `str0m = { package = "sew-str0m", version = "0.25.4" }`.
 [lib]
 name = "str0m"
 

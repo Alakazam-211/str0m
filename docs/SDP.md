@@ -1,3 +1,4 @@
+<!-- Changed by Alakazam Labs for sew-str0m; the fork's patches are listed in its README. -->
 # SDP negotiation
 
 > SDP Offer/Answer has been a nightmare from day one :) ([source][quote])

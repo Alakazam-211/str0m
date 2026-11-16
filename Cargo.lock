@@ -1890,7 +1890,7 @@ dependencies = [
 
 [[package]]
 name = "sew-str0m"
-version = "0.25.3"
+version = "0.25.4"
 dependencies = [
  "_str0m_test",
  "arrayvec",
