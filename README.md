@@ -19,6 +19,7 @@ str0m = { package = "sew-str0m", version = "0.25.5" }
 - The `str0m-*` backend crates (`str0m-aws-lc-rs`, `str0m-rust-crypto`, `str0m-openssl`,
   `str0m-wincrypto`, `str0m-apple-crypto`) and `str0m-proto` are upstream's crates from
   crates.io, and work with it.
+- The minimum supported Rust version (MSRV) is 1.89 (`rust-version` in Cargo.toml).
 
 ## Patches on upstream str0m 0.25.0
 

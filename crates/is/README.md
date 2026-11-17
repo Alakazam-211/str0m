@@ -21,6 +21,7 @@ Most users get it through sew-str0m (`str0m = { package = "sew-str0m", version =
   in upstream `is` gets both, and their types do not mix (nor do they with upstream str0m's).
 - `str0m-proto` and the `str0m-*` backend crates are upstream's crates from crates.io, and work
   with it.
+- The minimum supported Rust version (MSRV) is 1.89 (`rust-version` in Cargo.toml).
 
 ## Patches on upstream is 0.12.0
 

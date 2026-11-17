@@ -9,6 +9,8 @@ repository = "https://github.com/Alakazam-211/str0m"
 homepage = "https://github.com/Alakazam-211/str0m"
 documentation = "https://docs.rs/sew-str0m-is"
 readme = "README.md"
+keywords = ["ice", "webrtc", "stun", "nat-traversal", "sans-io"]
+categories = ["network-programming", "web-programming"]
 edition = "2024"
 rust-version = "1.89.0"
 # The published package: the library, its README, CHANGELOG and licence files.
