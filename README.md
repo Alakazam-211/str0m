@@ -45,8 +45,9 @@ retransmission without RTX via in-band resend on the main SSRC, by Jury Jarašev
 It also carries eight upstream PRs by Marcus Asteborg, one by Martin Algesten and one by
 Yasunobu, all merged upstream (tests: `b08bbbd4`; the other PRs carry their own), and upstream's
 revert of one of them (#1154). Each is applied unchanged except #1152, which differs by one
-line, and #1159 and #1158, whose tests are adapted; all three are noted below. Upstream's revert
-of #1154 has no AMR-WB test hunk here, because this line's port of #1154 never had one:
+line, and #1159 and #1158, whose tests are adapted. Upstream's revert of #1154 has no AMR-WB
+test hunk here, because this line's port of #1154 never had one. The PRs, with those three
+exceptions noted:
 
 - `9f859afd` TWCC: skip zero-length run chunks instead of applying their status to the packets
   after them ([str0m#1143](https://github.com/algesten/str0m/pull/1143)).
