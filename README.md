@@ -37,6 +37,10 @@ str0m's licence and credits are unchanged. Each line names the fork commit.
   remote's RTX for it after locking, also on later m-lines and offers; a codec locked without
   RTX because the remote offered none checks a later remote RTX payload type like any other
   locked mapping (a change is warned about and ignored).
+- `cd29bcb0` A link-limited delay-based decrease backs off from the rate the link delivered the
+  packets at, when that is higher than the acknowledged bitrate.
+- `9788fcc1` A burst the link spreads out counts as link-limited: the check needs a receive span of
+  at least 10 ms, not a send span.
 
 It also carries one upstream contributor's commit ahead of its release: `7a925e9c`, NACK
 retransmission without RTX via in-band resend on the main SSRC, by Jury Jaraševič

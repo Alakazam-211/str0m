@@ -41,6 +41,14 @@
     warned about and ignored). `PayloadParams` saved by an earlier version reload with RTX not
     marked as declined; renegotiate rather than restore saved negotiation state across an
     upgrade
+  * BWE: a delay-based decrease now follows the delivered rate when that is higher than the
+    acknowledged rate: on a feedback that shows the link limiting the packets, it backs off from
+    the rate at which the link delivered them, not from an acknowledged bitrate that still reads
+    the sender's earlier, lower rate (a change by Alakazam Labs, this fork's own)
+  * BWE: a burst the link spreads out now counts as link-limited: the check needs the packets
+    received over at least 10 ms instead of sent over 10 ms, so a frame sent in one burst and
+    spread out by the link allows a delay-based decrease (a change by Alakazam Labs, this
+    fork's own)
 
 # 0.24.0
 
