@@ -54,6 +54,8 @@ pub struct RateControl {
     /// `episode_decreased_at`) shows the path delivering packets slower than they were sent.
     /// `None`: no such information, decreases are not gated.
     fresh_link_limited: Option<bool>,
+    /// The rate the newest link-limited feedback's packets were delivered at.
+    fresh_delivered: Option<Bitrate>,
 }
 
 impl RateControl {
@@ -73,6 +75,7 @@ impl RateControl {
             last_rtt: None,
             episode_decreased_at: None,
             fresh_link_limited: None,
+            fresh_delivered: None,
         }
     }
 
@@ -85,6 +88,11 @@ impl RateControl {
     /// [`Self::decrease_allowed`]).
     pub fn set_fresh_link_limited(&mut self, v: Option<bool>) {
         self.fresh_link_limited = v;
+    }
+
+    /// The rate the path delivered the newest link-limited feedback's packets at.
+    pub fn set_fresh_delivered(&mut self, v: Option<Bitrate>) {
+        self.fresh_delivered = v;
     }
 
     /// Update with input from the delay controller.
@@ -297,6 +305,13 @@ impl RateControl {
 
     fn decrease(&mut self, observed_bitrate: Bitrate, now: Instant) {
         log_rate_control_applied_change!("decrease");
+        // the acknowledged bitrate lags a sender that just left ALR (a Bayesian estimate that
+        // weights a sample far from it at almost nothing): when the newest feedback shows the
+        // link limiting, what it delivered is the throughput to back off from
+        let observed_bitrate = match self.fresh_delivered {
+            Some(d) if d > observed_bitrate => d,
+            _ => observed_bitrate,
+        };
         let mut new_estimate = observed_bitrate * BETA;
 
         if self.estimated_bitrate < new_estimate {
@@ -566,6 +581,36 @@ mod test {
             // NB: Additive increase because we are nearing convergence
             rate_controller.update(Signal::Normal, 70_000.into(), None, now + duration_ms(3500));
             assert_eq!(rate_controller.estimated_bitrate().as_u64(), 72552);
+        }
+
+        #[test]
+        fn link_limited_overuse_decreases_from_the_delivered_rate_when_higher() {
+            let now = Instant::now();
+            let mut rate_controller = make_control(1_000_000);
+            rate_controller.update(Signal::Normal, 900_000.into(), None, now);
+
+            // The acknowledged bitrate lags at 80 kbit/s while the newest feedback shows the
+            // link delivering 1 Mbit/s: the decrease backs off from the delivered rate.
+            rate_controller.set_fresh_link_limited(Some(true));
+            rate_controller.set_fresh_delivered(Some(1_000_000.into()));
+            rate_controller.update(Signal::Overuse, 80_000.into(), None, now + duration_ms(500));
+            let e = rate_controller.estimated_bitrate().as_u64();
+            assert!(
+                (849_000..=851_000).contains(&e),
+                "estimate {e}, want 85% of 1 Mbit/s"
+            );
+        }
+
+        #[test]
+        fn link_limited_overuse_keeps_the_acknowledged_rate_when_higher() {
+            let now = Instant::now();
+            let mut rate_controller = make_control(100_000);
+            rate_controller.update(Signal::Normal, 85_000.into(), None, now);
+
+            rate_controller.set_fresh_link_limited(Some(true));
+            rate_controller.set_fresh_delivered(Some(50_000.into()));
+            rate_controller.update(Signal::Overuse, 90_000.into(), None, now + duration_ms(500));
+            assert_eq!(rate_controller.estimated_bitrate().as_u64(), 76_500);
         }
     }
 
