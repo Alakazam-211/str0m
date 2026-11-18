@@ -68,6 +68,25 @@ fn link_limited<'a>(packets: impl Iterator<Item = &'a AckedPacket>) -> bool {
         && recv_span.as_secs_f64() > send_span.as_secs_f64() * LINK_LIMITED_SPREAD
 }
 
+/// The rate at which the path delivered `packets` (bytes after the first to arrive over the
+/// receive span), with the same minimums as [`link_limited`].
+fn delivered_rate<'a>(packets: impl Iterator<Item = &'a AckedPacket>) -> Option<Bitrate> {
+    let mut v: Vec<&AckedPacket> = packets.collect();
+    if v.len() < LINK_LIMITED_MIN_PACKETS {
+        return None;
+    }
+    v.sort_by_key(|p| p.remote_recv_time);
+    let span = v[v.len() - 1].remote_recv_time - v[0].remote_recv_time;
+    if span < LINK_LIMITED_MIN_SPAN {
+        return None;
+    }
+    let mut bytes = crate::rtp_::DataSize::ZERO;
+    for p in &v[1..] {
+        bytes += p.size;
+    }
+    Some(bytes / span)
+}
+
 impl DelayController {
     pub fn new(initial_bitrate: Bitrate) -> Self {
         Self {
@@ -124,11 +143,16 @@ impl DelayController {
 
         // Does the path deliver this feedback's packets (after an overuse episode's last
         // decrease: those sent after it) slower than they were sent?
-        let fresh = match self.rate_control.episode_decreased_at() {
-            Some(at) => link_limited(acked.iter().filter(|p| p.local_send_time > at)),
-            None => link_limited(acked.iter()),
-        };
+        let after = self.rate_control.episode_decreased_at();
+        let pick = |p: &&AckedPacket| after.is_none_or(|at| p.local_send_time > at);
+        let fresh = link_limited(acked.iter().filter(pick));
         self.rate_control.set_fresh_link_limited(Some(fresh));
+        let delivered = if fresh {
+            delivered_rate(acked.iter().filter(pick))
+        } else {
+            None
+        };
+        self.rate_control.set_fresh_delivered(delivered);
 
         self.update_estimate(
             new_hypothesis,
