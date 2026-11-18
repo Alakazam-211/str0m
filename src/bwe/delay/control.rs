@@ -46,7 +46,12 @@ pub struct DelayController {
 }
 
 /// Whether `packets` took noticeably longer to arrive than to be sent (the path, not the sender,
-/// limits their rate). Needs a few packets sent over at least [`LINK_LIMITED_MIN_SPAN`].
+/// limits their rate). Needs a few packets received over at least [`LINK_LIMITED_MIN_SPAN`]
+/// (above the path's jitter); their send span may be shorter, down to a burst sent at once: a
+/// paced frame leaves in a burst of microseconds, and a link that spreads it over tens of
+/// milliseconds is the clearest sign of a link-limited rate. Requiring the send span to be
+/// [`LINK_LIMITED_MIN_SPAN`] as well rejected exactly those feedbacks, and held a delay-based
+/// decrease back for about 1.5 s on a saturated link in our tests (RTT 166 ms rising to 819 ms).
 fn link_limited<'a>(packets: impl Iterator<Item = &'a AckedPacket>) -> bool {
     let mut n = 0;
     let (mut send_min, mut send_max) = (None::<Instant>, None::<Instant>);
@@ -64,7 +69,7 @@ fn link_limited<'a>(packets: impl Iterator<Item = &'a AckedPacket>) -> bool {
     let send_span = s1 - s0;
     let recv_span = r1 - r0;
     n >= LINK_LIMITED_MIN_PACKETS
-        && send_span >= LINK_LIMITED_MIN_SPAN
+        && recv_span >= LINK_LIMITED_MIN_SPAN
         && recv_span.as_secs_f64() > send_span.as_secs_f64() * LINK_LIMITED_SPREAD
 }
 
@@ -283,5 +288,62 @@ impl DelayController {
                 .map(|rtt| rtt * 2)
                 .unwrap_or(MAX_TWCC_GAP)
                 .min(UPDATE_INTERVAL * 2)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::time::{Duration, Instant};
+
+    use super::{AckedPacket, delivered_rate, link_limited};
+    use crate::rtp_::DataSize;
+
+    /// Packets of 1000 bytes, the i-th sent at `send[i]` and received at `recv[i]` (offsets in
+    /// microseconds from a common start).
+    fn packets(send: &[u64], recv: &[u64]) -> Vec<AckedPacket> {
+        let t0 = Instant::now();
+        let us = |n: u64| t0 + Duration::from_micros(n);
+        send.iter()
+            .zip(recv)
+            .enumerate()
+            .map(|(i, (s, r))| AckedPacket {
+                seq_no: (i as u64).into(),
+                size: DataSize::bytes(1000),
+                local_send_time: us(*s),
+                remote_recv_time: us(*r),
+                local_recv_time: us(*r + 50_000),
+            })
+            .collect()
+    }
+
+    #[test]
+    fn a_burst_the_link_spreads_out_is_link_limited() {
+        // Sent within 3 microseconds, received over 54 ms.
+        let p = packets(&[0, 1, 2, 3], &[0, 18_000, 36_000, 54_000]);
+        assert!(link_limited(p.iter()));
+        // 3000 bytes after the first over 54 ms.
+        let rate = delivered_rate(p.iter()).expect("a delivered rate");
+        let bps = rate.as_u64();
+        assert!((444_000..=445_000).contains(&bps), "delivered {bps} bit/s");
+    }
+
+    #[test]
+    fn a_receive_span_within_jitter_is_not_link_limited() {
+        let p = packets(&[0, 1, 2, 3], &[0, 2_000, 4_000, 6_000]);
+        assert!(!link_limited(p.iter()));
+        assert!(delivered_rate(p.iter()).is_none());
+    }
+
+    #[test]
+    fn packets_arriving_as_spread_out_as_sent_are_not_link_limited() {
+        let p = packets(&[0, 10_000, 20_000, 30_000], &[0, 10_000, 20_500, 31_000]);
+        assert!(!link_limited(p.iter()));
+    }
+
+    #[test]
+    fn too_few_packets_are_not_link_limited() {
+        let p = packets(&[0, 1, 2], &[0, 18_000, 36_000]);
+        assert!(!link_limited(p.iter()));
+        assert!(delivered_rate(p.iter()).is_none());
     }
 }
