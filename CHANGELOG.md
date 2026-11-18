@@ -1,6 +1,22 @@
 <!-- Changed by Alakazam Labs for sew-str0m; the fork's patches are listed in its README. -->
 # Unreleased
 
+# 0.25.6
+
+sew-str0m 0.25.6: sew-str0m 0.25.5 plus these changes, both by Alakazam Labs and this fork's own
+(no upstream equivalent). sew-str0m-is stays 0.12.3 (unchanged).
+
+Changes:
+
+  * BWE: a delay-based decrease now follows the delivered rate when that is higher than the
+    acknowledged rate: on a feedback that shows the link limiting the packets, it backs off from
+    the rate at which the link delivered them, not from an acknowledged bitrate that still reads
+    the sender's earlier, lower rate (a change by Alakazam Labs, this fork's own)
+  * BWE: a burst the link spreads out now counts as link-limited: the check needs the packets
+    received over at least 10 ms instead of sent over 10 ms, so a frame sent in one burst and
+    spread out by the link allows a delay-based decrease (a change by Alakazam Labs, this
+    fork's own)
+
 # 0.25.5
 
 sew-str0m 0.25.5 and sew-str0m-is 0.12.3: sew-str0m 0.25.4 and sew-str0m-is 0.12.2 plus these

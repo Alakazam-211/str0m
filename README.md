@@ -9,7 +9,7 @@ library. Alakazam Labs publishes it for Sew, Alakazam Labs' chat and voice core:
 
 ```toml
 [dependencies]
-str0m = { package = "sew-str0m", version = "0.25.5" }
+str0m = { package = "sew-str0m", version = "0.25.6" }
 ```
 
 - The library names stay upstream's: `str0m` for this crate and `is` for its ICE crate
@@ -45,6 +45,11 @@ str0m = { package = "sew-str0m", version = "0.25.5" }
   ([str0m PR #1126][pr1126], an open upstream PR, with its follow-up commits), and a
   delay-based decrease applies only when the link, not the sender, limits the acknowledged
   packets ([str0m issue #1127][i1127]).
+- BWE, the fork's own changes to that check: a delay-based decrease on a feedback that shows the
+  link limiting the packets backs off from the rate at which the link delivered them when that
+  is higher than the acknowledged bitrate, which lags a sender that has just left an
+  application-limited period; and a burst the link spreads out counts as link-limited, whatever
+  its send span (the check needs a receive span of at least 10 ms).
 - TWCC: a packet already reported lost is not counted lost again when a later feedback report
   repeats it (a report that restarts from an earlier sequence number, after a late packet).
 - TWCC feedback parsing: a zero-length run chunk is skipped instead of taking over the statuses
@@ -72,7 +77,7 @@ str0m = { package = "sew-str0m", version = "0.25.5" }
   upstream).
 
 `CHANGELOG.md`, in this package and the repository, lists the same changes under 0.25.1,
-0.25.2, 0.25.3, 0.25.4 and 0.25.5.
+0.25.2, 0.25.3, 0.25.4, 0.25.5 and 0.25.6.
 
 ## Defaults that differ from upstream
 
